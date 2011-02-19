@@ -1,3 +1,4 @@
 project = unify
 version = 11.03.1
 template = ubuntu-cli
+version_ubuntu-application = 11.03.1

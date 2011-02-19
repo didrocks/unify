@@ -9,20 +9,28 @@ import optparse
 import os
 import sys
 
-import gettext
-from gettext import gettext as _
-gettext.textdomain('unify')
 
 # Add project root directory (enable symlink, and trunk execution).
 PROJECT_ROOT_DIRECTORY = os.path.abspath(
     os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0]))))
 
+python_path = []
+if os.path.abspath(__file__).startswith('/opt'):
+    syspath = sys.path[:] # copy to avoid infinite loop in pending objects
+    for path in syspath:
+        opt_path = path.replace('/usr', '/opt/extras.ubuntu.com/unify')
+        python_path.insert(0, opt_path)
+        sys.path.insert(0, opt_path)
 if (os.path.exists(os.path.join(PROJECT_ROOT_DIRECTORY, 'unify'))
     and PROJECT_ROOT_DIRECTORY not in sys.path):
+    python_path.insert(0, PROJECT_ROOT_DIRECTORY)
     sys.path.insert(0, PROJECT_ROOT_DIRECTORY)
-    os.putenv('PYTHONPATH', PROJECT_ROOT_DIRECTORY) # for subprocesses
+if python_path:
+    os.putenv('PYTHONPATH', "%s:%s" % (os.getenv('PYTHONPATH', ''), ':'.join(python_path))) # for subprocesses    os.putenv('PYTHONPATH', PROJECT_ROOT_DIRECTORY) # for subprocesses
 
 from unify import unifyconfig
+from unify import milestonehandler
+from unify import bugshandler
 
 LEVELS = (  logging.ERROR,
             logging.WARNING,
@@ -34,15 +42,15 @@ if __name__ == "__main__":
 
     version = unifyconfig.__unify_data_directory__
     # Support for command line options.
-    usage = _("unify [options]")
+    usage = "unify [options]"
     parser = optparse.OptionParser(version="unify %s" % version, usage=usage)
     parser.add_option('-d', '--debug', dest='debug_mode', action='store_true',
-        help=_('Print the maximum debugging info (implies -vv)'))
+        help='Print the maximum debugging info (implies -vv)')
     parser.add_option('-v', '--verbose', dest='logging_level', action='count',
-        help=_('set error_level output to warning, info, and then debug'))
+        help='set error_level output to warning, info, and then debug')
     # exemple of silly CLI option
     parser.add_option("-f", "--foo", action="store", dest="foo",
-                      help=_("foo should be assigned to bar"))
+                      help="foo should be assigned to bar")
     parser.set_defaults(logging_level=0, foo=None)
     (options, args) = parser.parse_args()
 
@@ -51,12 +59,28 @@ if __name__ == "__main__":
         options.logging_level = 3
     logging.basicConfig(level=LEVELS[options.logging_level], format='%(asctime)s %(levelname)s %(message)s')
 
+    try:
+        milestone = args[0]
+    except IndexError:
+        print ("Please specify a milestone for your application")
+        sys.exit(1)
+        
+    meta_project = "unity"
+    upstream_filter = ("unity", "unity-place-applications", "unity-place-files", "dee", "nux", "bamf", "libunity", "libunity-misc", "unity-asset-pool");
+    downstream_filter = []
+    for elem in upstream_filter:
+        downstream_filter.append("%s (Ubuntu)" % elem)
+        downstream_filter.append("%s (Ubuntu Natty)" % elem)
+    
+    # get bug tasks closed associated to the milestone
+    real_milestoned_bugs = milestonehandler.getCompletedBugTasks(meta_project, milestone)
+    
+    # act on bugs to close upstream ones and open downstream ones
+    #bugshandler.closeAllUpstreamBugs(real_milestoned_bugs, upstream_downstream_filter)
+    bugshandler.openDownstreamBugsByProject(real_milestoned_bugs, meta_project, upstream_filter, downstream_filter)
 
-    # this is the easter egg (:
-    if options.foo == 'bar':
-        logging.warning(_('easter egg found'))
-        print(_("Schweet"))
+    # now that all downstreams bugs are there, create the changelog
+    bugshandler.getPackagesFormattedChangelogByProject(real_milestoned_bugs)
 
-    # Run your cli application there.
-    print _("I'm launched and my args are: %s") % (" ".join(args))
-    logging.debug(_('end of prog'))
+    # move them to the next milestone
+    ##milestonehandler.moveOtherBugsToNextMilestone(meta_project, milestone)
