@@ -17,27 +17,61 @@
 from unify import launchpadmanager
 launchpad = launchpadmanager.getLaunchpad()
 
-def getMilestonedBugTasksOnStatus(milestone, status):
-    """ get milestone bug task on status """
-    bugs = milestone.searchTasks(status=("Fix Committed", "Fix Released"))
-    meta_bugs = [bug.bug for bug in bugs]
-    return meta_bugs
-    
+import datetime
+import sys
 
-def getCompletedBugTasks(project_name, milestone_name):
+def detectMilestones(project_name):
+    """ detect the current and next milestones """
+    
+    project = launchpad.projects[project_name]
+    current_milestone_pointer = None
+    current_milestone_delta = 100000000000
+    next_milestone_pointer = None
+    next_milestone_delta = current_milestone_delta
+    
+    now = datetime.datetime.now()
+    
+    # current milestone is the one targeted today or in the past
+    # the next one is <0 (in the future) and the min one
+    for milestone in project.all_milestones:
+        date_targeted = milestone.date_targeted
+        if not date_targeted:
+            continue
+        duration = (now - date_targeted).total_seconds()
+        if abs(duration) < current_milestone_delta and duration > 0:
+            # new min
+            current_milestone_pointer = milestone
+            current_milestone_delta = duration
+        if abs(duration) < next_milestone_delta and duration < 0:
+            # new next min
+            next_milestone_pointer = milestone
+            next_milestone_delta = - duration            
+    
+    # Now, check that the results are plausables
+    if 'n' in raw_input("Current milestone: %s, Next milestone: %s. Ok to proceed? [Y]/n: " % (current_milestone_pointer.name, next_milestone_pointer.name)):
+        sys.exit(0)
+    
+    return (current_milestone_pointer, next_milestone_pointer)
+
+def getManualMilestones(project_name, milestone_name):
+    """ get Milestone manually set for the project """
+    
+    project = launchpad.projects[project_name]
+    return project.getMilestone(name=milestone_name)
+
+def closeMilestone(milestone)
+    """ set milestone as inactive """
+    milestone.is_active = False
+
+def getCompletedBugTasks(milestone):
     """ get fix commited or fix released bug tasks from project and milestone """
 
-    project = launchpad.projects[project_name]
-    milestone = project.getMilestone(name=milestone_name)
-    return getMilestonedBugTasksOnStatus(milestone, status=("Fix Committed", "Fix Released"))
+    bugs = milestone.searchTasks(status=("Fix Committed", "Fix Released"))
+    return [bug.bug for bug in bugs]
 
-def moveOtherBugsToNextMilestone(project_name, milestone_name):
+def moveOtherBugsToNextMilestone(current_milestone, next_milestone):
     """ move other bugs to next milestone """
 
-    project = launchpad.projects[project_name]
-    milestone = project.getMilestone(name=milestone_name)
-    meta_bugs = getMilestonedBugTasksOnStatus(milestone, status=("New", "Incomplete", "Opinion", "Confirmed", "Triaged", "In Progress"))
-
-
-    
-    
+    bugs = current_milestone.searchTasks(status=("New", "Incomplete", "Opinion", "Confirmed", "Triaged", "In Progress"))
+    for bug_task in bugs:
+        bug_task.milestone = next_milestone

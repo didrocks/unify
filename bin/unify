@@ -60,8 +60,10 @@ if __name__ == "__main__":
     parser.add_option('-v', '--verbose', dest='logging_level', action='count',
         help='set error_level output to warning, info, and then debug')
     # exemple of silly CLI option
-    parser.add_option("-f", "--foo", action="store", dest="foo",
-                      help="foo should be assigned to bar")
+    parser.add_option("-m", "--milestone", action="store", dest="current_milestone",
+                      help="force current milestone target (next milestone target it mandatory)")
+    parser.add_option("-n", "--next-milestone", action="store", dest="next_milestone",
+                      help="force next milestone target (current milestone target it mandatory)")
     parser.set_defaults(logging_level=0, foo=None)
     (options, args) = parser.parse_args()
 
@@ -70,11 +72,6 @@ if __name__ == "__main__":
         options.logging_level = 3
     logging.basicConfig(level=LEVELS[options.logging_level], format='%(asctime)s %(levelname)s %(message)s')
 
-    try:
-        milestone = args[0]
-    except IndexError:
-        print ("Please specify a milestone for your application")
-        sys.exit(1)
         
     meta_project = "unity"
     upstream_filter = ("unity", "unity-place-applications", "unity-place-files", "dee", "nux", "bamf", "libunity", "libunity-misc", "unity-asset-pool");
@@ -82,16 +79,31 @@ if __name__ == "__main__":
     for elem in upstream_filter:
         downstream_filter.append("%s (Ubuntu)" % elem)
         downstream_filter.append("%s (Ubuntu Natty)" % elem)
+        
+    if (options.current_milestone and not options.next_milestone) or (not options.current_milestone and options.next_milestone):
+        print ("Current milestone and next milestone have to be set together to skip autodetection")
+        sys.exit(1)
+        
+    if options.current_milestone and options.next_milestone:
+        current_milestone = milestonehandler.getManualMilestones(meta_project, options.current_milestone)
+        next_milestone = milestonehandler.getManualMilestones(meta_project, options.next_milestone)
+    else:
+        (current_milestone, next_milestone) = milestonehandler.detectMilestones(meta_project)
+    
+    if not current_milestone or not next_milestone:
+        print ("didn't find the current or next milestone. Please specify them manually and check they exists")
+        sys.exit(1)
     
     # get bug tasks closed associated to the milestone
-    real_milestoned_bugs = milestonehandler.getCompletedBugTasks(meta_project, milestone)
+    real_milestoned_bugs = milestonehandler.getCompletedBugTasks(current_milestone)
     
-    # act on bugs to close upstream ones and open downstream ones
-    #bugshandler.closeAllUpstreamBugs(real_milestoned_bugs, upstream_downstream_filter)
+    # act on bugs to close upstream ones, close the milestone and open downstream ones
+    bugshandler.closeAllUpstreamBugs(real_milestoned_bugs, upstream_downstream_filter)
+    milestonehandler.closeMilestone(current_milestone)
     bugshandler.openDownstreamBugsByProject(real_milestoned_bugs, meta_project, upstream_filter, downstream_filter)
 
     # now that all downstreams bugs are there, create the changelog
     bugshandler.getPackagesFormattedChangelogByProject(real_milestoned_bugs)
 
-    # move them to the next milestone
-    ##milestonehandler.moveOtherBugsToNextMilestone(meta_project, milestone)
+    # move remaining bugs to the next milestone
+    milestonehandler.moveOtherBugsToNextMilestone(current_milestone, next_milestone)

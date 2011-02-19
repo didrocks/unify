@@ -17,9 +17,6 @@
 import re
 import textwrap
 
-from unify import launchpadmanager
-launchpad = launchpadmanager.getLaunchpad()
-
 _relevant_bugs_dict = None
 
 
@@ -37,8 +34,8 @@ def closeAllUpstreamBugs(bugs, upstream_filter):
             if (project_name in upstream_filter and
                 not isDownstreamBug(project_name) and
                 bug_task.status != "Fix Released"):
-                #bug_task.status = "Fix Released"
-                print "close one bug in fix released: %s" % bug_task.title
+                bug_task.status = "Fix Released"
+                #print "close one bug in fix released: %s" % bug_task.title
     
 def getRelevantbugTasks(bugs, meta_project, upstream_filter, downstream_filter):
     """ Get a dictionnary of all "revelant" bug task project by bug
@@ -115,7 +112,7 @@ def openDownstreamBugsByProject(bugs, meta_project, upstream_filter, downstream_
             if bug_content[0] in downstream_bugs:
                 continue
             #print ("Open: %s (Ubuntu): %s" % (bug_content[0], bug_content[1].title))
-            #bug.addTask("%s (Ubuntu)" % bug_content[0])
+            bug.addTask("%s (Ubuntu)" % bug_content[0])
        
     
 def getFormattedBugsByDownstream(bugs):
