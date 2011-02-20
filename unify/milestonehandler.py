@@ -62,6 +62,7 @@ def getManualMilestones(project_name, milestone_name):
 
 def closeMilestone(milestone):
     """ set milestone as inactive """
+    pass
     milestone.is_active = False
 
 def getCompletedBugTasks(milestone):

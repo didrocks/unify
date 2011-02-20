@@ -86,11 +86,10 @@ if __name__ == "__main__":
     # sync bugs mode
     ################
     if options.sync_bugs:
-        # for, look at opening upstream tasks for package only bugs
-        for project_name in ("unity",):#upstream_filter:
-            bugshandler.openDownstreamBugsByProject(project_name, meta_project, upstream_filter, downstream_filter)
-            # this one should be run after the open the downstream ones to open all meta_project tasks as well
-            #bugshandler.openUpstreamBugsByPackage(project_name, meta_project)
+        # Create for each project and sync their status
+        for project_name in upstream_filter:
+            bugshandler.syncbugsForProject(project_name, meta_project, upstream_filter, downstream_filter)
+            bugshandler.syncstatus(project_name, meta_project)
         sys.exit(0)
 
 
@@ -115,12 +114,12 @@ if __name__ == "__main__":
     real_milestoned_bugs = milestonehandler.getCompletedBugTasks(current_milestone)
     
     # act on bugs to close upstream ones, close the milestone and open downstream ones
-    bugshandler.closeAllUpstreamBugs(real_milestoned_bugs, upstream_downstream_filter)
+    bugshandler.syncbugs(real_milestoned_bugs, meta_project, upstream_filter, downstream_filter, True)
     milestonehandler.closeMilestone(current_milestone)
-    bugshandler.openDownstreamBugsByProjectForBugScope(real_milestoned_bugs, meta_project, upstream_filter, downstream_filter, True)
+    bugshandler.closeAllUpstreamBugs(real_milestoned_bugs, upstream_filter)
 
     # now that all downstreams bugs are there, create the changelog
-    bugshandler.getPackagesFormattedChangelogByProject(real_milestoned_bugs)
+    bugshandler.getPackagesFormattedChangelog(real_milestoned_bugs)
 
     # move remaining bugs to the next milestone
     milestonehandler.moveOtherBugsToNextMilestone(current_milestone, next_milestone)
