@@ -18,6 +18,7 @@ from unify import launchpadmanager
 launchpad = launchpadmanager.getLaunchpad()
 
 import datetime
+import logging
 import sys
 
 def detectMilestones(project_name):
@@ -74,4 +75,5 @@ def moveOtherBugsToNextMilestone(current_milestone, next_milestone):
 
     bugs = current_milestone.searchTasks(status=("New", "Incomplete", "Opinion", "Confirmed", "Triaged", "In Progress"))
     for bug_task in bugs:
+        logging.debug("Set bug to next milestone: %s" % bug_task.title)
         bug_task.milestone = next_milestone

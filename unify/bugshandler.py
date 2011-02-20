@@ -14,6 +14,7 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 ### END LICENSE
 
+import logging
 import re
 import textwrap
 
@@ -34,8 +35,9 @@ def closeAllUpstreamBugs(bugs, upstream_filter):
             if (project_name in upstream_filter and
                 not isDownstreamBug(project_name) and
                 bug_task.status != "Fix Released"):
+                logging.debug("Close in fix released: %s" % bug_task.title)
                 bug_task.status = "Fix Released"
-                #print "close one bug in fix released: %s" % bug_task.title
+                
     
 def getRelevantbugTasks(bugs, meta_project, upstream_filter, downstream_filter):
     """ Get a dictionnary of all "revelant" bug task project by bug
@@ -91,6 +93,7 @@ def getRelevantbugTasks(bugs, meta_project, upstream_filter, downstream_filter):
                     continue
             
     _relevant_bugs_dict = relevant_bugs_dict
+    logging.debug("Relevant bug tasks: %s" % bug_task.title)
     return relevant_bugs_dict
 
 
@@ -111,7 +114,7 @@ def openDownstreamBugsByProject(bugs, meta_project, upstream_filter, downstream_
             # if already exists
             if bug_content[0] in downstream_bugs:
                 continue
-            #print ("Open: %s (Ubuntu): %s" % (bug_content[0], bug_content[1].title))
+            logging.debug("Open downstreal task for %s: %s" % (bug_content[0], bug_content[1].title))
             bug.addTask("%s (Ubuntu)" % bug_content[0])
        
     
