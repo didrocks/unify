@@ -60,7 +60,7 @@ def getManualMilestones(project_name, milestone_name):
     project = launchpad.projects[project_name]
     return project.getMilestone(name=milestone_name)
 
-def closeMilestone(milestone)
+def closeMilestone(milestone):
     """ set milestone as inactive """
     milestone.is_active = False
 

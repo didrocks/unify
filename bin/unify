@@ -64,6 +64,8 @@ if __name__ == "__main__":
                       help="force current milestone target (next milestone target it mandatory)")
     parser.add_option("-n", "--next-milestone", action="store", dest="next_milestone",
                       help="force next milestone target (current milestone target it mandatory)")
+    parser.add_option("-S", "--sync", action="store_true", dest="sync_bugs",
+                      help="Sync bugs status, open revelant downstream and upstream tasks when needed.")
     parser.set_defaults(logging_level=0, foo=None)
     (options, args) = parser.parse_args()
 
@@ -79,7 +81,22 @@ if __name__ == "__main__":
     for elem in upstream_filter:
         downstream_filter.append("%s (Ubuntu)" % elem)
         downstream_filter.append("%s (Ubuntu Natty)" % elem)
-        
+    
+    ################    
+    # sync bugs mode
+    ################
+    if options.sync_bugs:
+        # for, look at opening upstream tasks for package only bugs
+        for project_name in ("unity",):#upstream_filter:
+            bugshandler.openDownstreamBugsByProject(project_name, meta_project, upstream_filter, downstream_filter)
+            # this one should be run after the open the downstream ones to open all meta_project tasks as well
+            #bugshandler.openUpstreamBugsByPackage(project_name, meta_project)
+        sys.exit(0)
+
+
+    ################    
+    # release mode
+    ################        
     if (options.current_milestone and not options.next_milestone) or (not options.current_milestone and options.next_milestone):
         print ("Current milestone and next milestone have to be set together to skip autodetection")
         sys.exit(1)
@@ -100,7 +117,7 @@ if __name__ == "__main__":
     # act on bugs to close upstream ones, close the milestone and open downstream ones
     bugshandler.closeAllUpstreamBugs(real_milestoned_bugs, upstream_downstream_filter)
     milestonehandler.closeMilestone(current_milestone)
-    bugshandler.openDownstreamBugsByProject(real_milestoned_bugs, meta_project, upstream_filter, downstream_filter)
+    bugshandler.openDownstreamBugsByProjectForBugScope(real_milestoned_bugs, meta_project, upstream_filter, downstream_filter, True)
 
     # now that all downstreams bugs are there, create the changelog
     bugshandler.getPackagesFormattedChangelogByProject(real_milestoned_bugs)

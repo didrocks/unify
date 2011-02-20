@@ -18,7 +18,13 @@ import logging
 import re
 import textwrap
 
+
+from unify import launchpadmanager
+launchpad = launchpadmanager.getLaunchpad()
+
 _relevant_bugs_dict = None
+
+ignored_status = ("Invalid", "Opinion", "Won't Fix")
 
 
 def isDownstreamBug(name):
@@ -44,7 +50,7 @@ def getRelevantbugTasks(bugs, meta_project, upstream_filter, downstream_filter):
     
     the rule is quite simple:
     report a downtream task for each upstream project
-    the only expection is if there is a a meta_project task
+    the only exception is if there is a a meta_project task
     AND another downstream or upstream task is present
     (we consider in that case that the upstream meta_project was only
     used as a milestone)
@@ -78,10 +84,10 @@ def getRelevantbugTasks(bugs, meta_project, upstream_filter, downstream_filter):
                 
         # Now, the logic to determine if it's relevant or not
         for upstream in upstream_list:
-            if upstream[0] != meta_project and upstream[1].status != "Invalid":
+            if upstream[0] != meta_project and upstream[1].status not in ignored_status:
                 relevant_bugs_dict[bug].add(upstream)
         for downstream in downstream_list:
-            if downstream[1].status != "Invalid":
+            if downstream[1].status not in ignored_status:
                 relevant_bugs_dict[bug].add(downstream)   
             if downstream[0] == meta_project:
                 add_master_task = True
@@ -93,12 +99,21 @@ def getRelevantbugTasks(bugs, meta_project, upstream_filter, downstream_filter):
                     continue
             
     _relevant_bugs_dict = relevant_bugs_dict
-    logging.debug("Relevant bug tasks: %s" % bug_task.title)
+    logging.debug("Relevant bug tasks: %s" % relevant_bugs_dict)
     return relevant_bugs_dict
 
 
-def openDownstreamBugsByProject(bugs, meta_project, upstream_filter, downstream_filter):
-    """ open all relevant downstream tasks for projects in upstream_filter""" 
+def openDownstreamBugsByProject(project_name, meta_project, upstream_filter, downstream_filter):
+    """ open all relevant dowstream tasks for projects in upstream_filter """
+    
+    # get all bugs scope for the project but don't open them for fix released one on the entire scope
+    # (avoid a lot of initial spam)
+    project = launchpad.projects[project_name]
+    bugs = [bug.bug for bug in project.searchTasks()]
+    openDownstreamBugsByProjectForBugScope(bugs, meta_project, upstream_filter, downstream_filter, False)
+
+def openDownstreamBugsByProjectForBugScope(bugs, meta_project, upstream_filter, downstream_filter, open_for_fixreleased=False):
+    """ open all relevant downstream tasks for projects in upstream_filter limited to the bugs content""" 
     
     relevant_bugs_dict = getRelevantbugTasks(bugs, meta_project, upstream_filter, downstream_filter)
     for bug in relevant_bugs_dict:
@@ -114,9 +129,38 @@ def openDownstreamBugsByProject(bugs, meta_project, upstream_filter, downstream_
             # if already exists
             if bug_content[0] in downstream_bugs:
                 continue
-            logging.debug("Open downstreal task for %s: %s" % (bug_content[0], bug_content[1].title))
-            bug.addTask("%s (Ubuntu)" % bug_content[0])
-       
+            if bug_content[1].status not in ignored_status and (bug_content[1].status != "Fix Released" or open_for_fixreleased):
+                logging.debug("Open downstream task for %s: %s" % (bug_content[0], bug_content[1].title))
+                package = launchpad.distributions['ubuntu'].getSourcePackage(name = bug_content[0])
+                #bug.addTask(package)
+
+
+def openUpstreamBugsByPackage(project_name, meta_project_name):
+    """ open all upstream tasks for those packages and add master project task as well """
+
+    package = launchpad.distributions['ubuntu'].getSourcePackage(name = project_name)
+    project = launchpad.projects[project_name]
+    meta_project = launchpad.projects[meta_project_name]
+    bugs = package.searchTasks()
+    for bug_task in bugs:
+        # look if there is already a corresponding upstream bug existing for this one
+        already_reported = False
+        meta_project_already_report = False
+        for other_task in bug_task.related_tasks:
+            if other_task.bug_target_name == project_name:
+                already_reported = True
+            if other_task.bug_target_name == meta_project_name:
+                 meta_project_already_report = True
+        if not already_reported and bug_task.status not in ignored_status:
+            logging.debug("Open upstream task for %s" % bug_task.title)
+            print("Open upstream task for %s" % bug_task.title)
+            #bug_task.bug.addTask(project)
+        # add an unity upstream task for across project tracking if not there
+        if not meta_project_already_report:
+            logging.debug("Open a master project task for %s" % bug_task.title)
+            print("Open an master project task for %s" % bug_task.title)
+            #bug_task.bug.addTask(meta_project)
+            
     
 def getFormattedBugsByDownstream(bugs):
     """ get a formatted bug with one line and (LP: #xxxx) numerotation for all downstreams bugs ss"""
@@ -127,7 +171,7 @@ def getFormattedBugsByDownstream(bugs):
         # now, look for impacted projects (all downstreams bugs should be opened)
         for bug_task in bug.bug_tasks:
             component = bug_task.bug_target_name
-            if isDownstreamBug(component):
+            if isDownstreamBug(component) and bug_task.status not in invalid_status:
                 component_name = re.search("(.*) \(Ubuntu.*\)",  component).group(1)
                 if not component_name in changelog_by_line:
                     changelog_by_line[component_name] = []
