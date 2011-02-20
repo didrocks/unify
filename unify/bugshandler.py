@@ -154,6 +154,7 @@ def syncbugs(bugs, meta_project, upstream_filter, downstream_filter, open_for_fi
             for is_upstream in (True, False):
                 if is_upstream in relevant_bugs_dict[bug][project_name] and relevant_bugs_dict[bug][project_name][is_upstream] == None:
                     # The only reason to not open it is that open_for_fixreleased is false and the other (upstream/downstream task) is "fix released" as well
+                    # or that the upstream or downstreams are in a ignored bug state
                     open_bug = True
                     other_task = not is_upstream
                     if (other_task) in relevant_bugs_dict[bug][project_name]:
@@ -165,8 +166,8 @@ def syncbugs(bugs, meta_project, upstream_filter, downstream_filter, open_for_fi
                             component_to_open = launchpad.projects[project_name]
                         else:
                             component_to_open = launchpad.distributions['ubuntu'].getSourcePackage(name = project_name)
-                        #new_task = bug.addTask(component_to_open)
-                        #relevant_bugs_dict[bug][project][is_upstream] = new_task
+                        new_task = bug.addTask(component_to_open)
+                        relevant_bugs_dict[bug][project][is_upstream] = new_task
 
 def syncstatus(project_name, meta_project):
     """ sync bug status for a project
@@ -177,6 +178,7 @@ def syncstatus(project_name, meta_project):
     - don't sync fix released from upstream to downstream
     - if downstream is fix commited or fix released, don't touch upstream status (we can have the case of a cherry-pick patch)
     - sync back master_status if relevant
+    - if all status are in invalid_status_to_open_bug state, we don't sync them as it's only noisy. If one isn't, we sync it to them.
     """
     
     # at this stage, all upstream and downstream correspondant bugs are supposed to be opened by previous commodities
@@ -251,13 +253,13 @@ def syncstatus(project_name, meta_project):
         bug_id = upstream_task.bug.id
         if (master_upstream_task and master_upstream_task.status != master_upstream_status):
             logging.debug("Master bug %i status set to %s" % (bug_id, master_upstream_status))
-            #master_upstream_task.status = master_upstream_status
+            master_upstream_task.status = master_upstream_status
         if (upstream_task.status != upstream_status):
             logging.debug("Upstream bug %i status set to %s" % (bug_id, upstream_status))
-            #upstream_task.status = upstream_status
+            upstream_task.status = upstream_status
         if (downstream_task.status != downstream_status):
             logging.debug("Downstream bug %i status set to %s" % (bug_id, downstream_status))
-            #downstream_task.status = downstream_status
+            downstream_task.status = downstream_status
             
     
 def getFormattedDownstreamBugs(bugs):
