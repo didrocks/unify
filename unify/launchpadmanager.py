@@ -15,7 +15,7 @@
 ### END LICENSE
 
 from launchpadlib.launchpad import Launchpad
-launchpad = Launchpad.login_with('unify', 'edge', allow_access_levels=["WRITE_PUBLIC"])
+launchpad = Launchpad.login_with('unify', 'edge', allow_access_levels=["WRITE_PRIVATE"])
 
 
 def getLaunchpad():

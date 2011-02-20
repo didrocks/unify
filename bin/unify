@@ -87,7 +87,7 @@ if __name__ == "__main__":
     ################
     if options.sync_bugs:
         # Create for each project and sync their status
-        for project_name in upstream_filter:
+        for project_name in upstream_filter:#("nux",):
             bugshandler.syncbugsForProject(project_name, meta_project, upstream_filter, downstream_filter)
             bugshandler.syncstatus(project_name, meta_project)
         sys.exit(0)

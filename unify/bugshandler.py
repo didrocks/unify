@@ -1,4 +1,4 @@
-# -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
+    # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
 ### BEGIN LICENSE
 # Copyright (C) YYYY Didier Roche <didrocks@ubuntu.com>
 # This program is free software: you can redistribute it and/or modify it 
@@ -22,10 +22,7 @@ import textwrap
 from unify import launchpadmanager
 launchpad = launchpadmanager.getLaunchpad()
 
-_relevant_bugs_dict = None
-
-invalid_status = ("Invalid", "Opinion", "Won't Fix")
-
+invalid_status_to_open_bug = ("Invalid", "Opinion", "Won't Fix", "Expired", "Incomplete")
 
 def isDownstreamBug(name):
     """ Return True if it's a downstream bug """
@@ -61,16 +58,15 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
     
     None means that the bug should be created as it's relevant"""
     
-    # cache
-    global _relevant_bugs_dict
-    if _relevant_bugs_dict:
-        return _relevant_bugs_dict
     
     # FIXME: the project should not strip (Ubuntu) in the downstream list
     # That will enable to remove the hack in openDownstreamBugsByProject()
     # for Ubuntu packages
     relevant_bugs_dict = {}
     for bug in bugs:
+        # ignore duplicates
+        if bug.duplicate_of:
+            continue
         relevant_bugs_dict[bug] = {}
         for bug_task in bug.bug_tasks:
             project = bug_task.bug_target_name
@@ -90,15 +86,25 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
         # Now, the logic to determine if we should remove the meta_project
         # or not open the upstream or downstream task
         number_relevant_other_than_meta = 0
+        removed_other = None
         for project in relevant_bugs_dict[bug]:
             if project == meta_project:
                 continue
             for switch in (True, False):
                 bug_task = relevant_bugs_dict[bug][project][switch]
-                if bug_task and bug_task.status not in invalid_status:
+                if bug_task and bug_task.status not in invalid_status_to_open_bug:
                     number_relevant_other_than_meta += 1
+                if bug_task and bug_task.status in invalid_status_to_open_bug:
+                    # don't open invalid task if there:
+                    removed_other = project
+        if removed_other:
+            for switch in (True, False):
+                # don't create the task as the other is invalid
+                if not relevant_bugs_dict[bug][removed_other][switch]:
+                    del(relevant_bugs_dict[bug][removed_other][switch])
 
-        # so: if only invalid bug: number_relevant_other_than_meta -> 0 OK
+        # so: if only invalid bugs: number_relevant_other_than_meta -> 0 OK
+        #     and removed manually
         # if only a downstream/upstream meta-project bug -> OK
         # if only other relevant component bug -> need to open a upstream task only
         # if other relevant upstream bug and meta-projet task -> need to remove "None" downstream task
@@ -112,7 +118,6 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
             if False in relevant_bugs_dict[bug][meta_project] and not relevant_bugs_dict[bug][meta_project][False]:
                 del(relevant_bugs_dict[bug][meta_project][False])
  
-    _relevant_bugs_dict = relevant_bugs_dict
     logging.debug("Relevant bug tasks: %s" % relevant_bugs_dict)
     return relevant_bugs_dict
 
@@ -124,8 +129,9 @@ def getAgregatedUpstreamDownstreamBugs(project_name):
     package = launchpad.distributions['ubuntu'].getSourcePackage(name = project_name)
     # add additional package bugs
     for task_bug in package.searchTasks():
-        if task_bug.bug not in bugs:
-            bugs.append(task_bug.bug)
+        master_bug = task_bug.bug
+        if master_bug not in bugs:
+            bugs.append(master_bug)
     return bugs
     
 
@@ -159,8 +165,8 @@ def syncbugs(bugs, meta_project, upstream_filter, downstream_filter, open_for_fi
                             component_to_open = launchpad.projects[project_name]
                         else:
                             component_to_open = launchpad.distributions['ubuntu'].getSourcePackage(name = project_name)
-                        new_task = bug.addTask(component_to_open)
-                        relevant_bugs_dict[bug][project][is_upstream] = new_task
+                        #new_task = bug.addTask(component_to_open)
+                        #relevant_bugs_dict[bug][project][is_upstream] = new_task
 
 def syncstatus(project_name, meta_project):
     """ sync bug status for a project
@@ -177,9 +183,12 @@ def syncstatus(project_name, meta_project):
     bugs = getAgregatedUpstreamDownstreamBugs(project_name)
     
     # define an order for status:
-    status_weight = {"New": 0, "Incomplete": 1, "Confirmed": 2, "Triaged": 3, "In Progress": 4, "Opinion": 5, "Invalid": 6, "Won't Fix": 7, "Fix Commited": 8, "Fix Released": 9}
+    status_weight = {"New": 0, "Incomplete": 1, "Opinion": 2, "Invalid": 3, "Won't Fix": 4, "Expired": 5, "Confirmed": 6, "Triaged": 7, "In Progress": 8, "Fix Committed": 9, "Fix Released": 10}
     
     for bug in bugs:
+        # ignore duplicates
+        if bug.duplicate_of:
+            continue
         upstream_task = None
         downstream_task = None
         master_upstream_task = None
@@ -211,6 +220,9 @@ def syncstatus(project_name, meta_project):
         upstream_status = upstream_task.status
         downstream_status = downstream_task.status
         
+        # FIXME: the correct algorithm for the meta_project is to look at
+        # all other projects and choose a status for it.
+        
         # look at the meta_project status if relevant:
         # if there is a master downstream bug, discare it, other sync upstream from master
         master_bug_relevant = False
@@ -229,22 +241,23 @@ def syncstatus(project_name, meta_project):
         # sync upstream to downstream if relevant
         if (status_weight[downstream_status] >  status_weight[upstream_status]) and downstream_status != "Fix Committed" and downstream_status != "Fix Released":
             upstream_status = downstream_status
-            # in that case, check again if there is a master bug to resync from upstream
-            if master_bug_relevant:
-                if (status_weight[upstream_status] > status_weight[master_upstream_status]):
-                    master_upstream_status = upstream_status
+
+        # sync now upstream (or downstream, doesn't matter) to master if relevant
+        if master_bug_relevant:
+            if (status_weight[upstream_status] > status_weight[master_upstream_status]):
+                master_upstream_status = upstream_status
         
         # sync status back
         bug_id = upstream_task.bug.id
         if (master_upstream_task and master_upstream_task.status != master_upstream_status):
             logging.debug("Master bug %i status set to %s" % (bug_id, master_upstream_status))
-            master_upstream_task.status = master_upstream_status
+            #master_upstream_task.status = master_upstream_status
         if (upstream_task.status != upstream_status):
             logging.debug("Upstream bug %i status set to %s" % (bug_id, upstream_status))
-            upstream_task.status = upstream_status
+            #upstream_task.status = upstream_status
         if (downstream_task.status != downstream_status):
             logging.debug("Downstream bug %i status set to %s" % (bug_id, downstream_status))
-            downstream_task.status = downstream_status
+            #downstream_task.status = downstream_status
             
     
 def getFormattedDownstreamBugs(bugs):
@@ -256,7 +269,7 @@ def getFormattedDownstreamBugs(bugs):
         # now, look for impacted projects (all downstreams bugs should be opened)
         for bug_task in bug.bug_tasks:
             component = bug_task.bug_target_name
-            if isDownstreamBug(component) and bug_task.status not in invalid_status:
+            if isDownstreamBug(component) and bug_task.status not in invalid_status_to_open_bug:
                 component_name = re.search("(.*) \(Ubuntu.*\)",  component).group(1)
                 if not component_name in changelog_by_line:
                     changelog_by_line[component_name] = []
