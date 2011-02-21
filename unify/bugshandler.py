@@ -40,7 +40,7 @@ def closeAllUpstreamBugs(bugs, upstream_filter):
                 bug_task.status != "Fix Released"):
                 logging.debug("Close in fix released: %s" % bug_task.title)
                 bug_task.status = "Fix Released"
-        bug.lp_save()
+                bug_task.lp_save()
 
 # TODO: for sync state, don't use getRelevantbugLayout and just sync the status directly
     
@@ -255,14 +255,15 @@ def syncstatus(project_name, meta_project):
         if (master_upstream_task and master_upstream_task.status != master_upstream_status):
             logging.debug("Master bug %i status set to %s" % (bug_id, master_upstream_status))
             master_upstream_task.status = master_upstream_status
+            master_upstream_task.lp_save()
         if (upstream_task.status != upstream_status):
             logging.debug("Upstream bug %i status set to %s" % (bug_id, upstream_status))
             upstream_task.status = upstream_status
+            upstream_task.lp_save()
         if (downstream_task.status != downstream_status):
             logging.debug("Downstream bug %i status set to %s" % (bug_id, downstream_status))
             downstream_task.status = downstream_status
-        # should sync the state
-        bug.lp_save()
+            downstream_task.lp_save()
             
     
 def getFormattedDownstreamBugs(bugs):
