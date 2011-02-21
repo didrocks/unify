@@ -40,6 +40,7 @@ def closeAllUpstreamBugs(bugs, upstream_filter):
                 bug_task.status != "Fix Released"):
                 logging.debug("Close in fix released: %s" % bug_task.title)
                 bug_task.status = "Fix Released"
+        bug.lp_save()
 
 # TODO: for sync state, don't use getRelevantbugLayout and just sync the status directly
     
@@ -166,8 +167,8 @@ def syncbugs(bugs, meta_project, upstream_filter, downstream_filter, open_for_fi
                             component_to_open = launchpad.projects[project_name]
                         else:
                             component_to_open = launchpad.distributions['ubuntu'].getSourcePackage(name = project_name)
-                        new_task = bug.addTask(component_to_open)
-                        relevant_bugs_dict[bug][project][is_upstream] = new_task
+                        new_task = bug.addTask(target=component_to_open)
+                        relevant_bugs_dict[bug][project_name][is_upstream] = new_task
 
 def syncstatus(project_name, meta_project):
     """ sync bug status for a project
@@ -260,6 +261,8 @@ def syncstatus(project_name, meta_project):
         if (downstream_task.status != downstream_status):
             logging.debug("Downstream bug %i status set to %s" % (bug_id, downstream_status))
             downstream_task.status = downstream_status
+        # should sync the state
+        bug.lp_save()
             
     
 def getFormattedDownstreamBugs(bugs):
