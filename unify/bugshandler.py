@@ -15,6 +15,7 @@
 ### END LICENSE
 
 import logging
+import os
 import re
 import textwrap
 
@@ -23,6 +24,9 @@ from unify import launchpadmanager
 launchpad = launchpadmanager.getLaunchpad()
 
 invalid_status_to_open_bug = ("Invalid", "Opinion", "Won't Fix", "Expired", "Incomplete")
+old_releases = ("(Ubuntu Lucid)", "(Ubuntu Maverick)")
+
+design_name = "ayatana-design"
 
 def isDownstreamBug(name):
     """ Return True if it's a downstream bug """
@@ -170,6 +174,16 @@ def syncbugs(bugs, meta_project, upstream_filter, downstream_filter, open_for_fi
                         new_task = bug.addTask(target=component_to_open)
                         relevant_bugs_dict[bug][project_name][is_upstream] = new_task
 
+def needs_log_no_action(bugid, component, new_status, design_status):
+    """ decide if an action needs to be logged rather than commited """
+    
+    if new_status in invalid_status_to_open_bug and not design_status:
+        log_file = open(os.path.expanduser("~/.unity_bugtriage.log"), "a")
+        log_file.write ("Bug %i: %s should be set to %s, but no %s task" % (bugid, component, new_status, design_name))
+        log_file.close()
+        return True
+    return False
+
 def syncstatus(project_name, meta_project):
     """ sync bug status for a project
     
@@ -196,8 +210,16 @@ def syncstatus(project_name, meta_project):
         downstream_task = None
         master_upstream_task = None
         master_downstream_task = None
+        design_task = None
         for bug_task in bug.bug_tasks:
             project = bug_task.bug_target_name
+            # ignore old releases
+            skip = False
+            for old_release in old_releases:
+                if old_release in project:
+                    skip = True
+            if skip:
+                continue
             # only get some interest in that project. Not fully optimized, but well…
             try:
                 project = re.search("(.*) \(Ubuntu.*\)",  project).group(1)
@@ -211,6 +233,8 @@ def syncstatus(project_name, meta_project):
                     upstream_task = bug_task
                 if project == meta_project:
                     master_upstream_task = bug_task
+                if project == design_name:
+                    design_task = bug_task
 
         # check that there is something to sync
         if not upstream_task or not downstream_task:
@@ -218,13 +242,13 @@ def syncstatus(project_name, meta_project):
         
         # status
         master_upstream_status = None
+        design_status = None
         if master_upstream_task:
             master_upstream_status = master_upstream_task.status
+        if design_task:
+            design_status = design_task.status
         upstream_status = upstream_task.status
         downstream_status = downstream_task.status
-        
-        # FIXME: the correct algorithm for the meta_project is to look at
-        # all other projects and choose a status for it.
         
         # look at the meta_project status if relevant:
         # if there is a master downstream bug, discare it, other sync upstream from master
@@ -236,7 +260,7 @@ def syncstatus(project_name, meta_project):
                 master_bug_relevant = True
                 if (status_weight[master_upstream_status] > status_weight[upstream_status]):
                     upstream_status = master_upstream_status
-                
+        
         # sync downstream to upstream if relevant
         if (status_weight[upstream_status] >  status_weight[downstream_status]) and upstream_status != "Fix Released":
             downstream_status = upstream_status
@@ -250,20 +274,44 @@ def syncstatus(project_name, meta_project):
             if (status_weight[upstream_status] > status_weight[master_upstream_status]):
                 master_upstream_status = upstream_status
         
+        # bring the ayatana-design task to the dance
+        if design_status:
+            status_to_sync = None
+            # if design says invalid
+            if design_status in ("Opinion", "Invalid", "Won't Fix"):
+                status_to_sync = design_status
+            # if design says "Fix committed" or "Fix released", set the bug to "triaged" if < Triaged
+            if design_status in ("Fix committed", "Fix released"):
+                if (master_bug_relevant and status_weight[master_upstream_status] < status_weight["Triaged"] and master_upstream_status != "Invalid" and
+                    status_weight[upstream_status] < status_weight["Triaged"] and upstream_status != "Invalid" and
+                    status_weight[downstream_status] < status_weight["Triaged"] and downstream_status != "Invalid"):
+                    status_to_sync = "Triaged"
+            if status_to_sync:
+                # reduce the noise
+                if master_bug_relevant and master_upstream_status not in invalid_status_to_open_bug:
+                    master_upstream_status = status_to_sync
+                if upstream_status not in invalid_status_to_open_bug:
+                    upstream_status = status_to_sync
+                if downstream_status not in invalid_status_to_open_bug:
+                    downstream_status = status_to_sync
+        
         # sync status back
-        bug_id = upstream_task.bug.id
+        bug_id = bug.id
         if (master_upstream_task and master_upstream_task.status != master_upstream_status):
-            logging.debug("Master bug %i status set to %s" % (bug_id, master_upstream_status))
-            master_upstream_task.status = master_upstream_status
-            master_upstream_task.lp_save()
+            if not needs_log_no_action(bug_id, "Master", master_upstream_status, design_status):
+                logging.debug("Master bug %i status set to %s" % (bug_id, master_upstream_status))
+                #master_upstream_task.status = master_upstream_status
+                #master_upstream_task.lp_save()
         if (upstream_task.status != upstream_status):
-            logging.debug("Upstream bug %i status set to %s" % (bug_id, upstream_status))
-            upstream_task.status = upstream_status
-            upstream_task.lp_save()
+            if not needs_log_no_action(bug_id, "Upstream", upstream_status, design_status):
+                logging.debug("Upstream bug %i status set to %s" % (bug_id, upstream_status))
+                #upstream_task.status = upstream_status
+                #upstream_task.lp_save()
         if (downstream_task.status != downstream_status):
-            logging.debug("Downstream bug %i status set to %s" % (bug_id, downstream_status))
-            downstream_task.status = downstream_status
-            downstream_task.lp_save()
+            if not needs_log_no_action(bug_id, "Downstream", downstream_status, design_status):
+                logging.debug("Downstream bug %i status set to %s" % (bug_id, downstream_status))
+                #downstream_task.status = downstream_status
+                #downstream_task.lp_save()
             
     
 def getFormattedDownstreamBugs(bugs):
