@@ -78,3 +78,5 @@ def moveOtherBugsToNextMilestone(current_milestone, next_milestone):
     for bug_task in bugs:
         logging.debug("Set bug to next milestone: %s" % bug_task.title)
         bug_task.milestone = next_milestone
+        bug_task.lp_save()
+
