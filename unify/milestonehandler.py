@@ -62,8 +62,8 @@ def getManualMilestones(project_name, milestone_name):
 
 def closeMilestone(milestone):
     """ set milestone as inactive """
-    pass
     milestone.is_active = False
+    milestone.lp_save()
 
 def getCompletedBugTasks(milestone):
     """ get fix commited or fix released bug tasks from project and milestone """
