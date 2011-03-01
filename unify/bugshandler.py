@@ -263,8 +263,9 @@ def syncstatus(project_name, meta_project):
                 if (status_weight[master_upstream_status] > status_weight[upstream_status]):
                     upstream_status = master_upstream_status
         
-        # sync downstream to upstream if relevant
-        if (status_weight[upstream_status] >  status_weight[downstream_status]) and upstream_status != "Fix Released":
+        # sync downstream to upstream if relevant (FIXME: should check
+        # milestone)
+        if (status_weight[upstream_status] > status_weight[downstream_status]) and upstream_status != "Fix Released":
             downstream_status = upstream_status
 
         # sync upstream to downstream if relevant
