@@ -178,10 +178,10 @@ def needs_log_no_action(bugid, component, new_status, design_status):
     """ decide if an action needs to be logged rather than commited """
     
     if new_status in invalid_status_to_open_bug and not design_status:
-        log_file = open(os.path.expanduser("~/.unity_bugtriage.log"), "a")a
+        log_file = open(os.path.expanduser("~/.unity_bugtriage.log"), "a")
         message = "Bug %i: %s should be set to %s, but no %s task\n" % (bugid, component, new_status, design_name)
         log_file.write(message)
-        loggin.debug(message)
+        logging.debug(message)
         log_file.close()
         return True
     return False
@@ -345,7 +345,7 @@ def getPackagesFormattedChangelog(bugs):
         # ensure (LP: #xxxxx) is on the same line (as it's at the end, this won't change the number of lines)
         index = 0
         while index < len(content):
-            content[index] = content[index].replace(" (LP:\n      ", "\n      (LP:")
+            content[index] = content[index].replace(" (LP:\n      ", "\n      (LP: ")
             index += 1
             
         print "-------------------------- %s --------------------------" % package
