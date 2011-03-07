@@ -280,8 +280,8 @@ def syncstatus(project_name, meta_project):
         # bring the ayatana-design task to the dance
         if design_status:
             status_to_sync = None
-            # if design says invalid
-            if design_status in ("Opinion", "Invalid", "Won't Fix"):
+            # if design says invalid (and not invalid task)
+            if design_status in ("Opinion", "Won't Fix"):
                 status_to_sync = design_status
             # if design says "Fix committed" or "Fix released", set the bug to "triaged" if < Triaged
             if design_status in ("Fix committed", "Fix released"):
