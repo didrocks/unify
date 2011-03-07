@@ -42,7 +42,7 @@ def closeAllUpstreamBugs(bugs, upstream_filter):
             if (project_name in upstream_filter and
                 not isDownstreamBug(project_name) and
                 bug_task.status != "Fix Released"):
-                logging.debug("Close in fix released: %s" % bug_task.title)
+                logging.info("Close in fix released: %s" % bug_task.title)
                 bug_task.status = "Fix Released"
                 bug_task.lp_save()
 
@@ -181,7 +181,7 @@ def needs_log_no_action(bugid, component, new_status, design_status):
         log_file = open(os.path.expanduser("~/.unity_bugtriage.log"), "a")
         message = "Bug %i: %s should be set to %s, but no %s task\n" % (bugid, component, new_status, design_name)
         log_file.write(message)
-        logging.debug(message)
+        logging.info(message)
         log_file.close()
         return True
     return False
@@ -302,17 +302,17 @@ def syncstatus(project_name, meta_project):
         bug_id = bug.id
         if (master_upstream_task and master_upstream_task.status != master_upstream_status):
             if not needs_log_no_action(bug_id, "Master", master_upstream_status, design_status):
-                logging.debug("Master bug %i status set to %s" % (bug_id, master_upstream_status))
+                logging.info("Master bug %i status set to %s" % (bug_id, master_upstream_status))
                 master_upstream_task.status = master_upstream_status
                 master_upstream_task.lp_save()
         if (upstream_task.status != upstream_status):
             if not needs_log_no_action(bug_id, "Upstream", upstream_status, design_status):
-                logging.debug("Upstream bug %i status set to %s" % (bug_id, upstream_status))
+                logging.info("Upstream bug %i status set to %s" % (bug_id, upstream_status))
                 upstream_task.status = upstream_status
                 upstream_task.lp_save()
         if (downstream_task.status != downstream_status):
             if not needs_log_no_action(bug_id, "Downstream", downstream_status, design_status):
-                logging.debug("Downstream bug %i status set to %s" % (bug_id, downstream_status))
+                logging.info("Downstream bug %i status set to %s" % (bug_id, downstream_status))
                 downstream_task.status = downstream_status
                 downstream_task.lp_save()
             

@@ -66,7 +66,7 @@ if __name__ == "__main__":
                       help="force next milestone target (current milestone target it mandatory)")
     parser.add_option("-S", "--sync", action="store_true", dest="sync_bugs",
                       help="Sync bugs status, open revelant downstream and upstream tasks when needed.")
-    parser.set_defaults(logging_level=0, foo=None)
+    parser.set_defaults(logging_level=2, foo=None)
     (options, args) = parser.parse_args()
 
     # set the verbosity
