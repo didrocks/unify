@@ -346,7 +346,7 @@ def getPackagesFormattedChangelog(bugs):
         # ensure (LP: #xxxxx) is on the same line (as it's at the end, this won't change the number of lines)
         index = 0
         while index < len(content):
-            content[index] = content[index].replace(" (LP:\n      ", "\n      (LP: ")
+            content[index] = content[index].replace(" (LP:\n      ", "\n      (LP: ").encode("utf-8","ignore")
             index += 1
             
         print "-------------------------- %s --------------------------" % package
