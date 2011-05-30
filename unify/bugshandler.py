@@ -14,6 +14,7 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 ### END LICENSE
 
+import lazr
 import logging
 import os
 import re
@@ -171,8 +172,11 @@ def syncbugs(bugs, meta_project, upstream_filter, downstream_filter, open_for_fi
                             component_to_open = launchpad.projects[project_name]
                         else:
                             component_to_open = launchpad.distributions['ubuntu'].getSourcePackage(name = project_name)
-                        new_task = bug.addTask(target=component_to_open)
-                        relevant_bugs_dict[bug][project_name][is_upstream] = new_task
+                        try:
+                            new_task = bug.addTask(target=component_to_open)
+                            relevant_bugs_dict[bug][project_name][is_upstream] = new_task
+                        except lazr.restfulclient.errors.ServerError, e:
+                            pass
 
 def needs_log_no_action(bugid, component, new_status, design_status):
     """ decide if an action needs to be logged rather than commited """
