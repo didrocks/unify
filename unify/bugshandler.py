@@ -53,7 +53,8 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
     """ Get a dictionnary of the perfect bug layout with the meta_project rules
     
     the rule is quite simple:
-    report a downtream task for each upstream project
+    report a downtream task for each upstream project (don't open an upstream task
+    if the project is only in downstream_filter like compiz/metacity)
     the only exception is if there is a a meta_project task
     AND another downstream or upstream task is present
     (we consider in that case that the upstream meta_project was only
@@ -88,6 +89,10 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
                 # create upstream and downstream task to None
                 relevant_bugs_dict[bug][project] = {True: None, False: None}
             relevant_bugs_dict[bug][project][is_upstream] = bug_task
+            # remove upstream task if tasks like compiz, metacity: only one downstream in filter
+            # and we don't want to open an upstream one (as not handled in launchpad)
+            if project not in upstream_filter:
+                relevant_bugs_dict[bug][project].pop(True])
                 
         # Now, the logic to determine if we should remove the meta_project
         # or not open the upstream or downstream task

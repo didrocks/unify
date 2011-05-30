@@ -81,13 +81,18 @@ if __name__ == "__main__":
     for elem in upstream_filter:
         downstream_filter.append("%s (Ubuntu)" % elem)
         downstream_filter.append("%s (Ubuntu Natty)" % elem)
+        downstream_filter.append("%s (Ubuntu Oneiric)" % elem)
     
+    downstream_filter.append ("Compiz (Ubuntu)" % elem)
+    downstream_filter.append ("Compiz (Ubuntu Natty)" % elem)
+    downstream_filter.append ("Compiz (Ubuntu Oneiric)" % elem)
+
     ################    
     # sync bugs mode
     ################
     if options.sync_bugs:
         # Create for each project and sync their status
-        for project_name in upstream_filter:#("nux",):
+        for project_name in upstream_filter:
             bugshandler.syncbugsForProject(project_name, meta_project, upstream_filter, downstream_filter)
             bugshandler.syncstatus(project_name, meta_project)
         sys.exit(0)
