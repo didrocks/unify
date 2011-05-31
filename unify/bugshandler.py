@@ -184,9 +184,8 @@ def syncbugs(bugs, meta_project, upstream_filter, downstream_filter, open_for_fi
                         else:
                             component_to_open = launchpad.distributions['ubuntu'].getSourcePackage(name = project_name)
                         try:
-                            pass
-                            #new_task = bug.addTask(target=component_to_open)
-                            #relevant_bugs_dict[bug][project_name][is_upstream] = new_task
+                            new_task = bug.addTask(target=component_to_open)
+                            relevant_bugs_dict[bug][project_name][is_upstream] = new_task
                         except lazr.restfulclient.errors.ServerError, e:
                             pass
 
@@ -195,7 +194,7 @@ def needs_log_no_action(bugid, component, new_status, design_status):
     
     if new_status in invalid_status_to_open_bug and not design_status:
         log_file = open(os.path.expanduser("~/.unity_bugtriage.log"), "a")
-        message = "Bug %i: %s should be set to %s, but no %s task\n" % (bugid, component, new_status, design_name)
+        message = "Bug https://bugs.launchpad.net/bugs/%i: %s should be set to %s, but no %s task\n" % (bugid, component, new_status, design_name)
         log_file.write(message)
         logging.info(message)
         log_file.close()
@@ -320,17 +319,17 @@ def syncstatus(project_name, meta_project):
             if not needs_log_no_action(bug_id, "Master", master_upstream_status, design_status):
                 logging.info("Master bug https://bugs.launchpad.net/bugs/%i status set to %s" % (bug_id, master_upstream_status))
                 master_upstream_task.status = master_upstream_status
-                #master_upstream_task.lp_save()
+                master_upstream_task.lp_save()
         if (upstream_task.status != upstream_status):
             if not needs_log_no_action(bug_id, "Upstream", upstream_status, design_status):
                 logging.info("Upstream bug https://bugs.launchpad.net/bugs/%i status set to %s" % (bug_id, upstream_status))
                 upstream_task.status = upstream_status
-                #upstream_task.lp_save()
+                upstream_task.lp_save()
         if (downstream_task.status != downstream_status):
             if not needs_log_no_action(bug_id, "Downstream", downstream_status, design_status):
                 logging.info("Downstream bug https://bugs.launchpad.net/bugs/%i status set to %s" % (bug_id, downstream_status))
                 downstream_task.status = downstream_status
-                #downstream_task.lp_save()
+                downstream_task.lp_save()
 
 def setimportance(project_name, meta_project):
     """ set bug importance for a project
@@ -361,7 +360,7 @@ def setimportance(project_name, meta_project):
             if bug_task.importance != 'Critical':
                 logging.info("Setting a task importance at crash https://bugs.launchpad.net/bugs/%i as critical")
                 bug_task.importance = 'Critical'
-                #bug_tasks.lp_save()
+                bug_tasks.lp_save()
                 
     
 def getFormattedDownstreamBugs(bugs):
