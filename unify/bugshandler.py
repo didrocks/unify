@@ -25,6 +25,7 @@ from unify import launchpadmanager
 launchpad = launchpadmanager.getLaunchpad()
 
 invalid_status_to_open_bug = ("Invalid", "Opinion", "Won't Fix", "Expired", "Incomplete")
+invalid_status_to_take_bugtask_into_account = ("Invalid", "Opinion", "Won't Fix", "Expired") # we can have ayatana-design/unity (upstream): incomplete/compiz (downstream): incomplete
 old_releases = ("(Ubuntu Lucid)", "(Ubuntu Maverick)", "(Ubuntu Natty)")
 
 design_name = "ayatana-design"
@@ -106,7 +107,7 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
                     bug_task = relevant_bugs_dict[bug][project][switch]
                 except KeyError: # for compiz/metacity, True doesn't exist for instance
                     continue
-                if bug_task and bug_task.status not in invalid_status_to_open_bug:
+                if bug_task and bug_task.status not in invalid_status_to_take_bugtask_into_account:
                     number_relevant_other_than_meta += 1
                 if bug_task and bug_task.status in invalid_status_to_open_bug:
                     # don't open invalid task if there:
