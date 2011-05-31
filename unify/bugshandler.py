@@ -70,7 +70,7 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
     # That will enable to remove the hack in openDownstreamBugsByProject()
     # for Ubuntu packages
     relevant_bugs_dict = {}
-    for bug in bugs:
+    for bug in bugs.values():
         # ignore duplicates
         if bug.duplicate_of:
             continue
@@ -92,9 +92,6 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
             # remove upstream task if tasks like compiz, metacity: only one downstream in filter
             # and we don't want to open an upstream one (as not handled in launchpad)
             if project not in upstream_filter and True in relevant_bugs_dict[bug][project]:
-                print "Bug %s : project: %s" % (bug.bug_tasks, project)
-                print (not project in relevant_bugs_dict[bug])
-                print relevant_bugs_dict[bug]
                 relevant_bugs_dict[bug][project].pop(True)
                 
         # Now, the logic to determine if we should remove the meta_project
@@ -145,13 +142,12 @@ def getAgregatedUpstreamDownstreamBugs(project_name):
     """ get a merge from upstream and downstream bugs for a project """
     
     project = launchpad.projects[project_name]
-    bugs = [bug.bug for bug in project.searchTasks()]
     package = launchpad.distributions['ubuntu'].getSourcePackage(name = project_name)
-    # add additional package bugs
-    for task_bug in package.searchTasks():
-        master_bug = task_bug.bug
-        if master_bug not in bugs:
-            bugs.append(master_bug)
+    bugs = {}
+    for bug_task in project.searchTasks():
+        bugs[re.search("(.*)/([0-9]+)", bug_task.self_link).group(2)] = bug_task.bug
+    for bug_task in package.searchTasks():
+        bugs[re.search("(.*)/([0-9]+)", bug_task.self_link).group(2)] = bug_task.bug
     return bugs
     
 
@@ -223,7 +219,7 @@ def syncstatus(project_name, meta_project):
     # define an order for status:
     status_weight = {"New": 0, "Incomplete": 1, "Opinion": 2, "Invalid": 3, "Won't Fix": 4, "Expired": 5, "Confirmed": 6, "Triaged": 7, "In Progress": 8, "Fix Committed": 9, "Fix Released": 10}
     
-    for bug in bugs:
+    for bug in bugs.values():
         # ignore duplicates
         if bug.duplicate_of:
             continue
@@ -344,7 +340,7 @@ def setimportance(project_name, meta_project):
     # at this stage, all upstream and downstream correspondant bugs are supposed to be opened by previous commodities
     bugs = getAgregatedUpstreamDownstreamBugs(project_name)            
 
-    for bug in bugs:
+    for bug in bugs.values():
         # ignore duplicates
         if bug.duplicate_of:
             continue
