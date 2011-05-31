@@ -178,7 +178,7 @@ def syncbugs(bugs, meta_project, upstream_filter, downstream_filter, open_for_fi
                         if relevant_bugs_dict[bug][project_name][other_task].status == "Fix Released" and not open_for_fixreleased:
                             open_bug = False
                     if open_bug:
-                        logging.debug("Open task for %s, upstream (%s): %i, %s" % (project_name, is_upstream, bug.id, bug.title))
+                        logging.debug("Open task for %s, upstream (%s): https://bugs.launchpad.net/bugs/%i, %s" % (project_name, is_upstream, bug.id, bug.title))
                         if is_upstream:
                             component_to_open = launchpad.projects[project_name]
                         else:
@@ -340,6 +340,8 @@ def setimportance(project_name, meta_project):
     # at this stage, all upstream and downstream correspondant bugs are supposed to be opened by previous commodities
     bugs = getAgregatedUpstreamDownstreamBugs(project_name)            
 
+    #TODO: just do that for unity bugs (not mesa or whatever) use filter? just change for the current project?
+
     for bug in bugs.values():
         # ignore duplicates
         if bug.duplicate_of:
@@ -348,19 +350,23 @@ def setimportance(project_name, meta_project):
         need_set_to_critical = 'apport-crash' in bug.tags
         if not need_set_to_critical:
             continue
+
         for bug_task in bug.bug_tasks:
+            if (bug_task.status in invalid_status_to_open_bug or bug_task.status == "Fix Released"):
+                continue
             project = bug_task.bug_target_name
             # ignore old releases
-            skip = False
             for old_release in old_releases:
                 if old_release in project:
-                    skip = True
-            if skip:
-                continue
+                    continue
             if bug_task.importance != 'Critical':
-                logging.info("Setting a task importance at crash https://bugs.launchpad.net/bugs/%i as critical")
+                logging.info("Setting a task importance at crash https://bugs.launchpad.net/bugs/%i as critical" % bug.id)
                 bug_task.importance = 'Critical'
-                bug_tasks.lp_save()
+                try:
+                    #bug_task.lp_save()
+                    pass
+                except lazr.restfulclient.errors.Unauthorized, e:
+                    pass
                 
     
 def getFormattedDownstreamBugs(bugs):

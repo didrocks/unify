@@ -77,8 +77,8 @@ if __name__ == "__main__":
     upstream_filter = {}
     upstream_filter["unity"] = []
     upstream_filter["unity-2d"] = []
-    upstream_filter["unity"] = ("unity", "unity-place-applications", "unity-place-files", "dee", "nux", "bamf", "libunity", "libunity-misc", "unity-asset-pool")
-    upstream_filter["unity-2d"] = ("unity-2d", "unity-place-applications", "unity-place-files", "dee", "bamf", "libunity", "libunity-misc", "unity-asset-pool")
+    upstream_filter["unity"] = ("unity-place-applications", "unity-place-files", "dee", "nux", "bamf", "libunity", "libunity-misc", "unity-asset-pool", "unity")
+    upstream_filter["unity-2d"] = ("unity-place-applications", "unity-place-files", "dee", "bamf", "libunity", "libunity-misc", "unity-asset-pool", "unity-2d")
 
     downstream_filter = {}
     downstream_filter["unity"] = []
@@ -103,8 +103,9 @@ if __name__ == "__main__":
         for meta_project in upstream_filter:
             for project_name in upstream_filter[meta_project]:
                 bugshandler.syncbugsForProject(project_name, meta_project, upstream_filter[meta_project], downstream_filter[meta_project])
-                bugshandler.syncstatus(project_name, meta_project)
-                bugshandler.setimportance(project_name, meta_project)
+               # TODO: finish with meta_project in the upstream_filter order, and then, just syncstatus and setimportance one.
+            bugshandler.syncstatus(project_name, meta_project)
+            bugshandler.setimportance(project_name, meta_project)
         sys.exit(0)
 
 
