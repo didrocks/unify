@@ -74,26 +74,39 @@ if __name__ == "__main__":
         options.logging_level = 3
     logging.basicConfig(level=LEVELS[options.logging_level], format='%(asctime)s %(levelname)s %(message)s')
         
-    meta_project = "unity"
-    upstream_filter = ("unity", "unity-place-applications", "unity-place-files", "dee", "nux", "bamf", "libunity", "libunity-misc", "unity-asset-pool")
-    downstream_filter = []
-    for elem in upstream_filter:
-        downstream_filter.append("%s (Ubuntu)" % elem)
-        downstream_filter.append("%s (Ubuntu Oneiric)" % elem)
+    upstream_filter = {}
+    upstream_filter["unity"] = []
+    upstream_filter["unity-2d"] = []
+    upstream_filter["unity"] = ("unity", "unity-place-applications", "unity-place-files", "dee", "nux", "bamf", "libunity", "libunity-misc", "unity-asset-pool")
+    upstream_filter["unity-2d"] = ("unity-2d", "unity-place-applications", "unity-place-files", "dee", "bamf", "libunity", "libunity-misc", "unity-asset-pool")
+
+    downstream_filter = {}
+    downstream_filter["unity"] = []
+    downstream_filter["unity-2d"] = []
+
+    for meta_project in upstream_filter:
+        for elem in upstream_filter[meta_project]:
+            downstream_filter[meta_project].append("%s (Ubuntu)" % elem)
+            downstream_filter[meta_project].append("%s (Ubuntu Oneiric)" % elem)
     
-    downstream_filter.append ("compiz (Ubuntu)")
-    downstream_filter.append ("compiz (Ubuntu Oneiric)")
+    # specific to one meta_project
+    downstream_filter["unity"].append ("compiz (Ubuntu)")
+    downstream_filter["unity"].append ("compiz (Ubuntu Oneiric)")
+    downstream_filter["unity-2d"].append ("compiz (Ubuntu)")
+    downstream_filter["unity-2d"].append ("compiz (Ubuntu Oneiric)")
 
     ################    
     # sync bugs mode
     ################
     if options.sync_bugs:
         # Create for each project and sync their status
-        for project_name in upstream_filter:
-            bugshandler.syncbugsForProject(project_name, meta_project, upstream_filter, downstream_filter)
-            bugshandler.syncstatus(project_name, meta_project)
-            bugshandler.setimportance(project_name, meta_project)
+        for meta_project in upstream_filter:
+            for project_name in upstream_filter[meta_project]:
+                bugshandler.syncbugsForProject(project_name, meta_project, upstream_filter[meta_project], downstream_filter[meta_project])
+                bugshandler.syncstatus(project_name, meta_project)
+                bugshandler.setimportance(project_name, meta_project)
         sys.exit(0)
+
 
 
     ################    
@@ -107,7 +120,7 @@ if __name__ == "__main__":
         current_milestone = milestonehandler.getManualMilestones(meta_project, options.current_milestone)
         next_milestone = milestonehandler.getManualMilestones(meta_project, options.next_milestone)
     else:
-        (current_milestone, next_milestone) = milestonehandler.detectMilestones(meta_project)
+        (current_milestone, next_milestone) = milestonehandler.detectMilestones("unity")
     
     if not current_milestone or not next_milestone:
         print ("didn't find the current or next milestone. Please specify them manually and check they exists")
@@ -117,9 +130,9 @@ if __name__ == "__main__":
     real_milestoned_bugs = milestonehandler.getCompletedBugTasks(current_milestone)
     
     # act on bugs to close upstream ones, close the milestone and open downstream ones
-    bugshandler.syncbugs(real_milestoned_bugs, meta_project, upstream_filter, downstream_filter, True)
+    bugshandler.syncbugs(real_milestoned_bugs, "unity", upstream_filter["unity"], downstream_filter["unity"], True)
     milestonehandler.closeMilestone(current_milestone)
-    bugshandler.closeAllUpstreamBugs(real_milestoned_bugs, upstream_filter)
+    bugshandler.closeAllUpstreamBugs(real_milestoned_bugs, upstream_filter["unity"])
 
     # now that all downstreams bugs are there, create the changelog
     bugshandler.getPackagesFormattedChangelog(real_milestoned_bugs)
