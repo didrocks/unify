@@ -73,19 +73,16 @@ if __name__ == "__main__":
     if options.debug_mode:
         options.logging_level = 3
     logging.basicConfig(level=LEVELS[options.logging_level], format='%(asctime)s %(levelname)s %(message)s')
-
         
     meta_project = "unity"
-    upstream_filter = ("unity", "unity-place-applications", "unity-place-files", "dee", "nux", "bamf", "libunity", "libunity-misc", "unity-asset-pool");
+    upstream_filter = ("unity", "unity-place-applications", "unity-place-files", "dee", "nux", "bamf", "libunity", "libunity-misc", "unity-asset-pool")
     downstream_filter = []
     for elem in upstream_filter:
         downstream_filter.append("%s (Ubuntu)" % elem)
-        downstream_filter.append("%s (Ubuntu Natty)" % elem)
         downstream_filter.append("%s (Ubuntu Oneiric)" % elem)
     
-    downstream_filter.append ("Compiz (Ubuntu)" % elem)
-    downstream_filter.append ("Compiz (Ubuntu Natty)" % elem)
-    downstream_filter.append ("Compiz (Ubuntu Oneiric)" % elem)
+    downstream_filter.append ("compiz (Ubuntu)")
+    downstream_filter.append ("compiz (Ubuntu Oneiric)")
 
     ################    
     # sync bugs mode
@@ -95,6 +92,7 @@ if __name__ == "__main__":
         for project_name in upstream_filter:
             bugshandler.syncbugsForProject(project_name, meta_project, upstream_filter, downstream_filter)
             bugshandler.syncstatus(project_name, meta_project)
+            bugshandler.setimportance(project_name, meta_project)
         sys.exit(0)
 
 

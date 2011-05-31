@@ -25,13 +25,13 @@ from unify import launchpadmanager
 launchpad = launchpadmanager.getLaunchpad()
 
 invalid_status_to_open_bug = ("Invalid", "Opinion", "Won't Fix", "Expired", "Incomplete")
-old_releases = ("(Ubuntu Lucid)", "(Ubuntu Maverick)")
+old_releases = ("(Ubuntu Lucid)", "(Ubuntu Maverick)", "(Ubuntu Natty)")
 
 design_name = "ayatana-design"
 
 def isDownstreamBug(name):
     """ Return True if it's a downstream bug """
-    return ("(Ubuntu" in name) # only (Ubuntu before we can have (Ubuntu Natty)
+    return ("(Ubuntu" in name) # only (Ubuntu before we can have (Ubuntu Natty))
 
 def closeAllUpstreamBugs(bugs, upstream_filter):
     """ close all upstream bugs from the lists which are in upstream_filter """
@@ -77,7 +77,7 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
         relevant_bugs_dict[bug] = {}
         for bug_task in bug.bug_tasks:
             project = bug_task.bug_target_name
-            if not (project in upstream_filter or project in downstream_filter):
+            if not project in upstream_filter and not project in downstream_filter:
                 continue
             try:
                 project = re.search("(.*) \(Ubuntu.*\)",  project).group(1)
@@ -91,18 +91,24 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
             relevant_bugs_dict[bug][project][is_upstream] = bug_task
             # remove upstream task if tasks like compiz, metacity: only one downstream in filter
             # and we don't want to open an upstream one (as not handled in launchpad)
-            if project not in upstream_filter:
-                relevant_bugs_dict[bug][project].pop(True])
+            if project not in upstream_filter and True in relevant_bugs_dict[bug][project]:
+                print "Bug %s : project: %s" % (bug.bug_tasks, project)
+                print (not project in relevant_bugs_dict[bug])
+                print relevant_bugs_dict[bug]
+                relevant_bugs_dict[bug][project].pop(True)
                 
         # Now, the logic to determine if we should remove the meta_project
-        # or not open the upstream or downstream task
+        # or not open an upstream or downstream task
         number_relevant_other_than_meta = 0
         removed_other = None
         for project in relevant_bugs_dict[bug]:
             if project == meta_project:
                 continue
             for switch in (True, False):
-                bug_task = relevant_bugs_dict[bug][project][switch]
+                try:
+                    bug_task = relevant_bugs_dict[bug][project][switch]
+                except KeyError: # for compiz/metacity, True doesn't exist for instance
+                    continue
                 if bug_task and bug_task.status not in invalid_status_to_open_bug:
                     number_relevant_other_than_meta += 1
                 if bug_task and bug_task.status in invalid_status_to_open_bug:
@@ -111,8 +117,11 @@ def getRelevantbugLayout(bugs, meta_project, upstream_filter, downstream_filter)
         if removed_other:
             for switch in (True, False):
                 # don't create the task as the other is invalid
-                if not relevant_bugs_dict[bug][removed_other][switch]:
-                    del(relevant_bugs_dict[bug][removed_other][switch])
+                try:
+                    if not relevant_bugs_dict[bug][removed_other][switch]:
+                        del(relevant_bugs_dict[bug][removed_other][switch])
+                except KeyError: # for compiz/metacity, True doesn't exist for instance
+                    continue
 
         # so: if only invalid bugs: number_relevant_other_than_meta -> 0 OK
         #     and removed manually
@@ -178,8 +187,9 @@ def syncbugs(bugs, meta_project, upstream_filter, downstream_filter, open_for_fi
                         else:
                             component_to_open = launchpad.distributions['ubuntu'].getSourcePackage(name = project_name)
                         try:
-                            new_task = bug.addTask(target=component_to_open)
-                            relevant_bugs_dict[bug][project_name][is_upstream] = new_task
+                            pass
+                            #new_task = bug.addTask(target=component_to_open)
+                            #relevant_bugs_dict[bug][project_name][is_upstream] = new_task
                         except lazr.restfulclient.errors.ServerError, e:
                             pass
 
@@ -311,20 +321,51 @@ def syncstatus(project_name, meta_project):
         bug_id = bug.id
         if (master_upstream_task and master_upstream_task.status != master_upstream_status):
             if not needs_log_no_action(bug_id, "Master", master_upstream_status, design_status):
-                logging.info("Master bug %i status set to %s" % (bug_id, master_upstream_status))
+                logging.info("Master bug https://bugs.launchpad.net/bugs/%i status set to %s" % (bug_id, master_upstream_status))
                 master_upstream_task.status = master_upstream_status
-                master_upstream_task.lp_save()
+                #master_upstream_task.lp_save()
         if (upstream_task.status != upstream_status):
             if not needs_log_no_action(bug_id, "Upstream", upstream_status, design_status):
-                logging.info("Upstream bug %i status set to %s" % (bug_id, upstream_status))
+                logging.info("Upstream bug https://bugs.launchpad.net/bugs/%i status set to %s" % (bug_id, upstream_status))
                 upstream_task.status = upstream_status
-                upstream_task.lp_save()
+                #upstream_task.lp_save()
         if (downstream_task.status != downstream_status):
             if not needs_log_no_action(bug_id, "Downstream", downstream_status, design_status):
-                logging.info("Downstream bug %i status set to %s" % (bug_id, downstream_status))
+                logging.info("Downstream bug https://bugs.launchpad.net/bugs/%i status set to %s" % (bug_id, downstream_status))
                 downstream_task.status = downstream_status
-                downstream_task.lp_save()
-            
+                #downstream_task.lp_save()
+
+def setimportance(project_name, meta_project):
+    """ set bug importance for a project
+    
+    The rule is pretty simple: all crashers is critical
+    """
+    
+    # at this stage, all upstream and downstream correspondant bugs are supposed to be opened by previous commodities
+    bugs = getAgregatedUpstreamDownstreamBugs(project_name)            
+
+    for bug in bugs:
+        # ignore duplicates
+        if bug.duplicate_of:
+            continue
+
+        need_set_to_critical = 'apport-crash' in bug.tags
+        if not need_set_to_critical:
+            continue
+        for bug_task in bug.bug_tasks:
+            project = bug_task.bug_target_name
+            # ignore old releases
+            skip = False
+            for old_release in old_releases:
+                if old_release in project:
+                    skip = True
+            if skip:
+                continue
+            if bug_task.importance != 'Critical':
+                logging.info("Setting a task importance at crash https://bugs.launchpad.net/bugs/%i as critical")
+                bug_task.importance = 'Critical'
+                #bug_tasks.lp_save()
+                
     
 def getFormattedDownstreamBugs(bugs):
     """ get a formatted bug with one line and (LP: #xxxx) numerotation for all downstreams bugs """
