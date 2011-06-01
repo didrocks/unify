@@ -340,8 +340,6 @@ def setimportance(project_name, meta_project):
     # at this stage, all upstream and downstream correspondant bugs are supposed to be opened by previous commodities
     bugs = getAgregatedUpstreamDownstreamBugs(project_name)            
 
-    #TODO: just do that for unity bugs (not mesa or whatever) use filter? just change for the current project?
-
     for bug in bugs.values():
         # ignore duplicates
         if bug.duplicate_of:
@@ -359,12 +357,22 @@ def setimportance(project_name, meta_project):
             for old_release in old_releases:
                 if old_release in project:
                     continue
+            # only work on that component (strip package name info to get upstream name)
+            try:
+                project = re.search("(.*) \(Ubuntu.*\)",  project).group(1)
+            except AttributeError:
+                pass
+            if project != project_name:
+                continue
+            # only change status for Medium priority (which are the new ones)
+            if bug_task.importance != 'Medium':
+                continue
+
             if bug_task.importance != 'Critical':
                 logging.info("Setting a task importance at crash https://bugs.launchpad.net/bugs/%i as critical" % bug.id)
                 bug_task.importance = 'Critical'
                 try:
-                    #bug_task.lp_save()
-                    pass
+                    bug_task.lp_save()
                 except lazr.restfulclient.errors.Unauthorized, e:
                     pass
                 
