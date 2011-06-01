@@ -92,8 +92,10 @@ if __name__ == "__main__":
     # specific to one meta_project
     downstream_filter["unity"].append ("compiz (Ubuntu)")
     downstream_filter["unity"].append ("compiz (Ubuntu Oneiric)")
-    downstream_filter["unity-2d"].append ("compiz (Ubuntu)")
-    downstream_filter["unity-2d"].append ("compiz (Ubuntu Oneiric)")
+    downstream_filter["unity-2d"].append ("metacity (Ubuntu)")
+    downstream_filter["unity-2d"].append ("metacity (Ubuntu Oneiric)")
+    downstream_filter["unity-2d"].append ("qt4-x11 (Ubuntu)")
+    downstream_filter["unity-2d"].append ("qt4-x11 (Ubuntu Oneiric)")
 
     ################    
     # sync bugs mode
