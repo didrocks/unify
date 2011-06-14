@@ -49,6 +49,10 @@ def detectMilestones(project_name):
             next_milestone_delta = - duration            
     
     # Now, check that the results are plausables
+    if not current_milestone_pointer or not next_milestone_pointer:
+        print "Can't detect one of the two milestones, please provide them manually"
+        sys.exit(1)
+        
     if 'n' in raw_input("Current milestone: %s, Next milestone: %s. Ok to proceed? [Y]/n: " % (current_milestone_pointer.name, next_milestone_pointer.name)):
         sys.exit(0)
     

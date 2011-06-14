@@ -30,9 +30,9 @@ old_releases = ("(Ubuntu Lucid)", "(Ubuntu Maverick)", "(Ubuntu Natty)")
 
 design_name = "ayatana-design"
 
-def isDownstreamBug(name):
-    """ Return True if it's a downstream bug """
-    return ("(Ubuntu" in name) # only (Ubuntu before we can have (Ubuntu Natty))
+def isValidDownstreamBug(name):
+    """ Return True if it's a current release downstream bug """
+    return ("(Ubuntu)" in name) # even if there is only an Oneiric (current release) task, we will have: (Ubuntu) and (Ubuntu Oneiric)
 
 def closeAllUpstreamBugs(bugs, upstream_filter):
     """ close all upstream bugs from the lists which are in upstream_filter """
@@ -42,7 +42,6 @@ def closeAllUpstreamBugs(bugs, upstream_filter):
         for bug_task in bug.bug_tasks:
             project_name = bug_task.bug_target_name
             if (project_name in upstream_filter and
-                not isDownstreamBug(project_name) and
                 bug_task.status != "Fix Released"):
                 logging.info("Close in fix released: %s" % bug_task.title)
                 bug_task.status = "Fix Released"
@@ -386,8 +385,8 @@ def getFormattedDownstreamBugs(bugs):
         # now, look for impacted projects (all downstreams bugs should be opened)
         for bug_task in bug.bug_tasks:
             component = bug_task.bug_target_name
-            if isDownstreamBug(component) and bug_task.status not in invalid_status_to_open_bug:
-                component_name = re.search("(.*) \(Ubuntu.*\)",  component).group(1)
+            if isValidDownstreamBug(component) and bug_task.status not in invalid_status_to_open_bug:
+                component_name = re.search("(.*) \(Ubuntu.*\)", component).group(1)
                 if not component_name in changelog_by_line:
                     changelog_by_line[component_name] = []
                 changelog_by_line[component_name].append(formatted_entry)

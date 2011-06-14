@@ -66,6 +66,9 @@ if __name__ == "__main__":
                       help="force next milestone target (current milestone target it mandatory)")
     parser.add_option("-S", "--sync", action="store_true", dest="sync_bugs",
                       help="Sync bugs status, open revelant downstream and upstream tasks when needed.")
+    parser.add_option("-R", "--release", action="store", dest="meta_project", default=None,
+                      help="Release mode for provided meta_project")
+                      
     parser.set_defaults(logging_level=2, foo=None)
     (options, args) = parser.parse_args()
 
@@ -73,7 +76,7 @@ if __name__ == "__main__":
     if options.debug_mode:
         options.logging_level = 3
     logging.basicConfig(level=LEVELS[options.logging_level], format='%(asctime)s %(levelname)s %(message)s')
-        
+    
     upstream_filter = {}
     upstream_filter["unity"] = []
     upstream_filter["unity-2d"] = []
@@ -114,7 +117,17 @@ if __name__ == "__main__":
 
     ################    
     # release mode
-    ################        
+    ################  
+    if not options.meta_project:
+        print ("Choose either sync or release mode")
+        sys.exit(1)
+        
+    meta_project = options.meta_project
+    
+    if not meta_project in ("unity", "unity-2d"):
+        print ("option to release mode should be either unity or unity-2d")
+        sys.exit(1)
+          
     if (options.current_milestone and not options.next_milestone) or (not options.current_milestone and options.next_milestone):
         print ("Current milestone and next milestone have to be set together to skip autodetection")
         sys.exit(1)
@@ -123,7 +136,7 @@ if __name__ == "__main__":
         current_milestone = milestonehandler.getManualMilestones(meta_project, options.current_milestone)
         next_milestone = milestonehandler.getManualMilestones(meta_project, options.next_milestone)
     else:
-        (current_milestone, next_milestone) = milestonehandler.detectMilestones("unity")
+        (current_milestone, next_milestone) = milestonehandler.detectMilestones(meta_project)
     
     if not current_milestone or not next_milestone:
         print ("didn't find the current or next milestone. Please specify them manually and check they exists")
@@ -133,9 +146,15 @@ if __name__ == "__main__":
     real_milestoned_bugs = milestonehandler.getCompletedBugTasks(current_milestone)
     
     # act on bugs to close upstream ones, close the milestone and open downstream ones
-    bugshandler.syncbugs(real_milestoned_bugs, "unity", upstream_filter["unity"], downstream_filter["unity"], True)
+    # TODO: add a more elegant wrapper in bugshandler
+    bugs_to_sync = {}
+    import re
+    for bug in real_milestoned_bugs:
+        bugs_to_sync[bug.id] = bug
+    
+    bugshandler.syncbugs(bugs_to_sync, meta_project, upstream_filter[meta_project], downstream_filter[meta_project], True)
     milestonehandler.closeMilestone(current_milestone)
-    bugshandler.closeAllUpstreamBugs(real_milestoned_bugs, upstream_filter["unity"])
+    bugshandler.closeAllUpstreamBugs(real_milestoned_bugs, upstream_filter[meta_project])
 
     # now that all downstreams bugs are there, create the changelog
     bugshandler.getPackagesFormattedChangelog(real_milestoned_bugs)
