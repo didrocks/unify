@@ -185,7 +185,7 @@ def syncbugs(bugs, meta_project, upstream_filter, downstream_filter, open_for_fi
                         try:
                             new_task = bug.addTask(target=component_to_open)
                             relevant_bugs_dict[bug][project_name][is_upstream] = new_task
-                        except lazr.restfulclient.errors.ServerError, e:
+                        except (lazr.restfulclient.errors.ServerError, lazr.restfulclient.errors.BadRequest), e:
                             pass
 
 def needs_log_no_action(bugid, component, new_status, design_status):
