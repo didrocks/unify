@@ -372,7 +372,7 @@ def setimportance(project_name, meta_project):
                 bug_task.importance = 'Critical'
                 try:
                     bug_task.lp_save()
-                except lazr.restfulclient.errors.Unauthorized, e:
+                except (lazr.restfulclient.errors.Unauthorized, lazr.restfulclient.errors.PreconditionFailed), e:
                     pass
                 
     
