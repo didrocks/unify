@@ -81,7 +81,7 @@ if __name__ == "__main__":
     upstream_filter["unity"] = []
     upstream_filter["unity-2d"] = []
     upstream_filter["unity"] = ("unity", "unity-lens-applications", "unity-lens-files", "unity-lens-music", "dee", "nux", "bamf", "libunity", "libunity-misc", "unity-asset-pool")
-    upstream_filter["unity-2d"] = ("unity-2d", "unity-lens-applications", "unity-lens-files", "unity-lens-music", "dee", "bamf", "libunity", "libunity-misc", "unity-asset-pool")
+    upstream_filter["unity-2d"] = ("unity-2d")
 
     downstream_filter = {}
     downstream_filter["unity"] = []
