@@ -1,0 +1,345 @@
+# -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
+### BEGIN LICENSE
+# Copyright (C) 2011 Didier Roche <didrocks@ubuntu.com>
+# This program is free software: you can redistribute it and/or modify it 
+# under the terms of the GNU General Public License version 3, as published 
+# by the Free Software Foundation.
+# 
+# This program is distributed in the hope that it will be useful, but 
+# WITHOUT ANY WARRANTY; without even the implied warranties of 
+# MERCHANTABILITY, SATISFACTORY QUALITY, or FITNESS FOR A PARTICULAR 
+# PURPOSE.  See the GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along 
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
+### END LICENSE
+
+import os
+import sys
+import unittest
+
+sys.path.insert(0, os.path.abspath('.'))
+
+from unify import launchpadmanager
+launchpad = launchpadmanager.getLaunchpad(use_staging=True)
+
+from unify.bugshandler import get_bug_mastered_track_reports
+
+class T(unittest.TestCase):
+
+    def setUp(self):
+        self.design_name = 'oneconf'
+        self.upstream_name1 = 'unity'
+        self.upstream_name2 = 'compiz'
+        
+        self.project = launchpad.projects[self.design_name]
+        self.upstream_target1 = launchpad.projects[self.upstream_name1]
+        self.upstream_target2 = launchpad.projects[self.upstream_name2]
+        self.downstream_target1 = launchpad.distributions['ubuntu'].getSourcePackage(name = self.upstream_name1)
+        self.downstream_target2 = launchpad.distributions['ubuntu'].getSourcePackage(name = self.upstream_name2)
+        
+    def set_status(self, bug_task, status):
+        bug_task.status = status
+        bug_task.lp_save()    
+        
+    def create_designbug_by_status(self, status):
+        bug = launchpad.bugs.createBug(title='Foo', description='Foo', target=self.project)
+        self.set_status(bug.bug_tasks[0], status)
+        return bug
+        
+    def add_bugtask_with_status(self, masterbug, target, status):
+        task = masterbug.addTask(target=target)
+        self.set_status(task, status)
+        
+    def get_reduced_scope(self, bugs):
+        reduced_scope = set ()
+        for bug in bugs:
+            for bug_task in bug.bug_tasks:
+                if bug_task.bug_target_name == self.design_name:
+                    reduced_scope.add(bug_task)
+        return reduced_scope
+        
+    def check_correct_number_of_bugs(self, reduced_scope, untriaged_bugs_number, officially_signed_off_number, ready_to_develop_upstream_number,
+                                    ready_to_develop_downstream_number, ready_to_land_downstream_number, ready_to_review_number, bugs_in_invalid_state_number):
+                                    
+        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = get_bug_mastered_track_reports(self.design_name, reduced_scope)
+
+        self.assertEqual(len(untriaged_bugs), untriaged_bugs_number)
+        self.assertEqual(len(officially_signed_off), officially_signed_off_number)
+        self.assertEqual(len(ready_to_develop_upstream), ready_to_develop_upstream_number)
+        self.assertEqual(len(ready_to_develop_downstream), ready_to_develop_downstream_number)
+        self.assertEqual(len(ready_to_land_downstream), ready_to_land_downstream_number)
+        self.assertEqual(len(ready_to_review), ready_to_review_number)
+        self.assertEqual(len(bugs_in_invalid_state), bugs_in_invalid_state_number)
+        
+        return (untriaged_bugs, officially_signed_off, ready_to_develop_upstream, ready_to_develop_downstream,
+                ready_to_land_downstream, ready_to_review, bugs_in_invalid_state)
+
+    ## Simple cases
+
+    def test_new_design_status(self):
+        '''All untriaged design status test'''
+
+        new_bug = self.create_designbug_by_status('New')
+        confirmed_bug = self.create_designbug_by_status('Confirmed')
+        inprogress_bug = self.create_designbug_by_status('In Progress')
+        reduced_scope = (new_bug.bug_tasks[0], confirmed_bug.bug_tasks[0], inprogress_bug.bug_tasks[0])
+        
+        self.check_correct_number_of_bugs(reduced_scope, 3, 0, 0, 0, 0, 0, 0)
+
+
+    def test_invalid_bug(self):
+        '''All invalid status bugs should never be considered'''
+        
+        invalid_bug = self.create_designbug_by_status('Invalid')
+        wontfix_bug = self.create_designbug_by_status('Won\'t Fix')
+        opinion_bug = self.create_designbug_by_status('Opinion')        
+        reduced_scope = (invalid_bug.bug_tasks[0], wontfix_bug.bug_tasks[0], opinion_bug.bug_tasks[0])
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 0)
+
+
+    def test_officially_signed_off(self):
+        '''Officially signed off bugs'''
+    
+        officially_signed_off_bug = self.create_designbug_by_status('Triaged')
+        reduced_scope = (officially_signed_off_bug.bug_tasks[0],)
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 1, 0, 0, 0, 0, 0)
+
+
+    def test_ready_to_develop_with_no_upstream_or_downstream_bug(self):
+        '''Ready to develop with no upstream nor downstream bug'''
+        
+        ready_to_develop_bug = self.create_designbug_by_status('Fix Committed')
+        reduced_scope = (ready_to_develop_bug.bug_tasks[0],)
+
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1)
+
+    ## Ready to develop/review: simple case
+
+    def test_ready_to_develop_upstream(self):
+        '''Bug ready for an upstream development'''
+        
+        ready_to_develop_upstream_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_develop_upstream_bug, self.upstream_target1, 'New')
+        reduced_scope = self.get_reduced_scope((ready_to_develop_upstream_bug,))
+        
+        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =         self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 0, 0, 0)
+        # Check that the downstream task is opened as well
+        self.assertEqual(len(ready_to_develop_upstream_bug.bug_tasks), 3)
+
+        # TODO: check the format of the dict as well (str + regexp?)
+
+
+    def test_ready_to_land_downstream_from_upstream_fix_committed(self):
+        '''Bug ready for landing downstream from upstream fix committed'''
+        ready_to_land_downstream_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_land_downstream_bug, self.upstream_target1, 'Fix Committed')
+        reduced_scope = self.get_reduced_scope((ready_to_land_downstream_bug,))
+        
+        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0)
+        # Check that the downstream task is opened as well
+        self.assertEqual(len(ready_to_land_downstream_bug.bug_tasks), 3)
+
+
+    def test_ready_to_land_downstream_from_upstream_fix_released(self):
+        '''Bug ready for landing downstream from upstream fix released'''
+        ready_to_land_downstream_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_land_downstream_bug, self.upstream_target1, 'Fix Released')
+        reduced_scope = self.get_reduced_scope((ready_to_land_downstream_bug,))
+        
+        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0)
+        # Check that the downstream task is opened as well
+        self.assertEqual(len(ready_to_land_downstream_bug.bug_tasks), 3)
+
+
+    def test_ready_to_develop_downstream(self):
+        '''Bug ready for an donwstream development'''
+        ready_to_develop_downstream_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_develop_downstream_bug, self.downstream_target1, 'New')
+        reduced_scope = self.get_reduced_scope((ready_to_develop_downstream_bug,))
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0)
+
+
+    def test_ready_to_develop_downstream_fix_committed(self):
+        '''Bug ready for an donwstream development even fix committed'''
+        ready_to_develop_downstream_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_develop_downstream_bug, self.downstream_target1, 'Fix Committed')
+        reduced_scope = self.get_reduced_scope((ready_to_develop_downstream_bug,))
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0)
+
+
+    def test_ready_for_downstream_dev_with_invalid_upstream_task(self):
+        '''Ready for downstream development, with an invalid upstream task'''
+        ready_to_develop_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.upstream_target1, 'Invalid')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target1, 'New')
+        reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0)
+
+
+    def test_ready_for_design_review_upstream_downstream(self):
+        '''Bug ready for design review with upstream and downstream tasks: all fix released'''
+        ready_to_review_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_review_bug, self.upstream_target1, 'Fix Released')
+        self.add_bugtask_with_status(ready_to_review_bug, self.downstream_target1, 'Fix Released')
+        reduced_scope = self.get_reduced_scope((ready_to_review_bug,))
+
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0)
+
+        
+    def test_ready_for_design_review_with_downstream(self):
+        '''Ready for design review with only a downstream task'''
+        ready_to_review_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_review_bug, self.downstream_target1, 'Fix Released')
+        reduced_scope = self.get_reduced_scope((ready_to_review_bug,))
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0)
+
+
+    def test_ready_for_design_review_with_downstream_and_invalid_upstream(self):
+        '''Ready for design review with only a downstream task and an invalid upstream one'''
+        ready_to_review_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_review_bug, self.upstream_target1, 'Invalid')
+        self.add_bugtask_with_status(ready_to_review_bug, self.downstream_target1, 'Fix Released')
+        reduced_scope = self.get_reduced_scope((ready_to_review_bug,))
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0)
+
+
+    def test_ready_to_develop_upstream_even_with_invalid_downstream(self):
+        '''Ready to develop upstream even with an invalid downstream task'''
+        ready_for_nothing_bug = self.create_designbug_by_status('Fix Committed')
+        # using target 2 there as unity is a special target for now (see triage fonction)
+        self.add_bugtask_with_status(ready_for_nothing_bug, self.upstream_target2, 'New')
+        self.add_bugtask_with_status(ready_for_nothing_bug, self.downstream_target2, 'Invalid')
+        reduced_scope = self.get_reduced_scope((ready_for_nothing_bug,))
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 0, 0, 0)
+
+        
+    def test_ready_to_land_downstream_with_invalid_downstream(self):
+        '''Ready to develop upstream even with an invalid downstream task'''
+        ready_for_nothing_bug = self.create_designbug_by_status('Fix Committed')
+        # using target 2 there as unity is a special target for now (see triage fonction)
+        self.add_bugtask_with_status(ready_for_nothing_bug, self.upstream_target2, 'Fix Released')
+        self.add_bugtask_with_status(ready_for_nothing_bug, self.downstream_target2, 'Invalid')
+        reduced_scope = self.get_reduced_scope((ready_for_nothing_bug,))
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0)
+
+        
+    ## Ready to develop/review: Composed case: multiple bug
+    
+    def test_ready_to_develop_upstreams(self):
+        '''Ready to develop with 2 upstreams task'''
+        ready_to_develop_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.upstream_target1, 'New')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.upstream_target2, 'New')
+        reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
+        
+        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 2, 0, 0, 0, 0)
+        for target in (self.upstream_name1, self.upstream_name2):
+            self.assertIn(target, ready_to_develop_upstream)
+
+
+    def test_ready_to_develop_downstreams(self):
+        '''Ready to develop with 2 downstream tasks'''
+        ready_to_develop_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target1, 'New')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target2, 'New')
+        reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
+        
+        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 2, 0, 0, 0)        
+        for target in (self.upstream_name1, self.upstream_name2):
+            self.assertIn(target, ready_to_develop_downstream)
+
+
+    def test_ready_to_develop_downstreams_with_an_invalid_upstream(self):
+        '''Ready to develop with 2 downstream tasks and an invalid upstream'''
+        ready_to_develop_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.upstream_target1, 'Invalid')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target1, 'New')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target2, 'New')                
+        reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
+        
+        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 2, 0, 0, 0)
+        for target in (self.upstream_name1, self.upstream_name2):
+            self.assertIn(target, ready_to_develop_downstream)
+
+
+    def test_ready_to_develop_downstreams_with_an_invalid_upstream(self):
+        '''Ready to develop with 2 downstream tasks and an invalid upstream'''
+        ready_to_develop_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.upstream_target1, 'Invalid')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target1, 'New')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target2, 'New')                
+        reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
+        
+        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 2, 0, 0, 0)
+        for target in (self.upstream_name1, self.upstream_name2):
+            self.assertIn(target, ready_to_develop_downstream)
+
+
+    def test_ready_to_develop_downstreams_with_an_invalid_upstream(self):
+        '''Ready to develop with 1 valid downstream tasks and an invalid upstream'''
+        ready_to_develop_bug = self.create_designbug_by_status('Fix Committed')
+        # downstream 1 should not be opened
+        self.add_bugtask_with_status(ready_to_develop_bug, self.upstream_target1, 'Invalid')
+        self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target2, 'New')                
+        reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
+        
+        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0)
+        # right downstream name to work on
+        self.assertIn(self.upstream_name2, ready_to_develop_downstream)
+
+
+    def test_ready_nothing_to_work_on(self):
+        '''Ready for nothing: all tasks are invalid'''
+        ready_for_nothing_bug = self.create_designbug_by_status('Fix Committed')
+        # downstream 1 should not be opened
+        self.add_bugtask_with_status(ready_for_nothing_bug, self.upstream_target1, 'Invalid')
+        self.add_bugtask_with_status(ready_for_nothing_bug, self.downstream_target2, 'Invalid')
+        reduced_scope = self.get_reduced_scope((ready_for_nothing_bug,))
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1)
+
+
+    def test_only_on_task_ready_to_review(self):
+        '''Only one task ready, not the other one'''
+        one_task_ready_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(one_task_ready_bug, self.downstream_target1, 'Fix Released')
+        self.add_bugtask_with_status(one_task_ready_bug, self.upstream_target2, 'New')
+        reduced_scope = self.get_reduced_scope((one_task_ready_bug,))
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 0, 0, 0)
+        
+        
+    def test_only_on_task_ready_to_land(self):
+        '''One task ready to land, the other under work'''
+        one_task_ready_bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(one_task_ready_bug, self.upstream_target1, 'Fix Committed')
+        self.add_bugtask_with_status(one_task_ready_bug, self.upstream_target2, 'New') 
+        reduced_scope = self.get_reduced_scope((one_task_ready_bug,))
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 1, 0, 0)        
+        
+
+#
+# main
+#
+
+unittest.main()

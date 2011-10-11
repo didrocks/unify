@@ -430,8 +430,9 @@ def get_bug_mastered_track_reports(master_task, subset_bugs=None):
             changes officially signed off and handed over to a canonical downstream developer (d)
             changes officially signed off, worked by canonical upstream and ready to land in the distro (e)
             changes ready to review for design in distro (f)
+            bugs in invalid shape (g)
             
-            a, b, f bugs are a dict of bug_link: (bug title, importance, assignee)
+            a, b, f, g bugs are a dict of bug_link: (bug title, importance, assignee)
             c, d, e bugs are dict of projects: (bug_link, bug_title, importance, assignee)"""
 
     project = launchpad.projects[master_task]
@@ -442,6 +443,7 @@ def get_bug_mastered_track_reports(master_task, subset_bugs=None):
     ready_to_develop_downstream = {}
     ready_to_land_downstream = {}
     ready_to_review = {}
+    bugs_in_invalid_state = {}
     
     # simple cases first when looking only at the master task status
     get_bug_master_track_bug_status(project, "New", untriaged_bugs, subset_bugs)
@@ -481,6 +483,7 @@ def get_bug_mastered_track_reports(master_task, subset_bugs=None):
         # D: all tasks with (0/1 upstream, all downstream (== fix released)) -> ready for review by the change design owner
         all_downstream_closed = True
         at_least_one_downstream = False
+        added_somewhere = False
         for target_project in bug_content:
             # A, B or D (valid upstream bug)
             if bug_content[target_project][True] and bug_content[target_project][True][2] not in invalid_status_to_open_bug:
@@ -495,6 +498,7 @@ def get_bug_mastered_track_reports(master_task, subset_bugs=None):
                 # A
                 if status not in ('Fix Committed', 'Fix Released'):
                     ready_to_develop_upstream[target_project] = (link, title, importance, assignee)
+                    added_somewhere = True
                     (downstream_link, downstream_title, downstream_status, downstream_importance, downstream_assignee) = bug_content[target_project][False]
                     # Something landed upstream. Ignore invalid_status_to_open_bug as this should mean
                     # we have something downstream to land.
@@ -509,6 +513,7 @@ def get_bug_mastered_track_reports(master_task, subset_bugs=None):
                     if downstream_status != 'Fix Released' and (target_project != 'unity' or downstream_status not in invalid_status_to_open_bug):
                         ready_to_land_downstream[target_project] = (downstream_link, downstream_title, downstream_importance, downstream_assignee)
                         all_downstream_closed = False # invalidate D
+                        added_somewhere = True
                     
             # no valid upstream task: C or D
             else:
@@ -522,6 +527,7 @@ def get_bug_mastered_track_reports(master_task, subset_bugs=None):
                 # C
                 if status != 'Fix Released':
                     ready_to_develop_downstream[target_project] = (link, title, importance, assignee)
+                    added_somewhere = True
                     all_downstream_closed = False # invalidate D
         
         # deal with D
@@ -532,13 +538,22 @@ def get_bug_mastered_track_reports(master_task, subset_bugs=None):
                 assignee_name = design_bug_task.assignee.name
             ready_to_review[design_bug_task.web_link] = (design_bug_task.title, design_bug_task.importance,
                                                          assignee_name)
+            added_somewhere = True
+            
+        if not added_somewhere:
+            assignee_name = None
+            if design_bug_task.assignee:
+                assignee_name = design_bug_task.assignee.name
+            bugs_in_invalid_state[design_bug_task.web_link] = (design_bug_task.title, design_bug_task.importance,
+                                                                assignee_name)
 
     return (untriaged_bugs,
             officially_signed_off,
             ready_to_develop_upstream,
             ready_to_develop_downstream,
             ready_to_land_downstream,
-            ready_to_review)
+            ready_to_review,
+            bugs_in_invalid_state)
 
 def get_bug_master_track_bug_status(project, bugstatus, bug_dict, subset_bugs):
     """ get data for get_bug_mastered_track_reports by status and add
