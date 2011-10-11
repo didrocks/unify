@@ -29,6 +29,7 @@ invalid_status_to_take_bugtask_into_account = ("Invalid", "Opinion", "Won't Fix"
 old_releases = ("(Ubuntu Lucid)", "(Ubuntu Maverick)", "(Ubuntu Natty)")
 
 design_name = "ayatana-design"
+db = None
 
 def isValidDownstreamBug(name):
     """ Return True if it's a current release downstream bug """
@@ -419,7 +420,7 @@ def getPackagesFormattedChangelog(bugs):
         print "-------------------------- %s --------------------------" % package
         print "\n".join(content)
                 
-def get_bug_mastered_track_reports(master_task, subset_bugs=None):
+def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
     """ get all bugs triaged by category compared to master task
     
     subset_bugs is for unit tests
@@ -446,10 +447,10 @@ def get_bug_mastered_track_reports(master_task, subset_bugs=None):
     bugs_in_invalid_state = {}
     
     # simple cases first when looking only at the master task status
-    get_bug_master_track_bug_status(project, "New", untriaged_bugs, subset_bugs)
-    get_bug_master_track_bug_status(project, "Confirmed", untriaged_bugs, subset_bugs)
-    get_bug_master_track_bug_status(project, "Triaged", officially_signed_off, subset_bugs)
-    get_bug_master_track_bug_status(project, "In Progress", untriaged_bugs, subset_bugs)
+    get_bug_master_track_bug_status(project, "New", untriaged_bugs, db, subset_bugs)
+    get_bug_master_track_bug_status(project, "Confirmed", untriaged_bugs, db, subset_bugs)
+    get_bug_master_track_bug_status(project, "Triaged", officially_signed_off, db, subset_bugs)
+    get_bug_master_track_bug_status(project, "In Progress", untriaged_bugs, db, subset_bugs)
             
     # More complicate cases where it can be either ready to develop upstream, 
     # or ready to land/develop downstream
@@ -546,6 +547,7 @@ def get_bug_mastered_track_reports(master_task, subset_bugs=None):
                 assignee_name = design_bug_task.assignee.name
             bugs_in_invalid_state[design_bug_task.web_link] = (design_bug_task.title, design_bug_task.importance,
                                                                 assignee_name)
+        db.ensure_not_in_db_closed_bugs(design_bug_task.web_link)
 
     return (untriaged_bugs,
             officially_signed_off,
@@ -555,7 +557,7 @@ def get_bug_mastered_track_reports(master_task, subset_bugs=None):
             ready_to_review,
             bugs_in_invalid_state)
 
-def get_bug_master_track_bug_status(project, bugstatus, bug_dict, subset_bugs):
+def get_bug_master_track_bug_status(project, bugstatus, bug_dict, db, subset_bugs):
     """ get data for get_bug_mastered_track_reports by status and add
     them to bug_dict"""
     
@@ -569,12 +571,19 @@ def get_bug_master_track_bug_status(project, bugstatus, bug_dict, subset_bugs):
             if bug_task.assignee:
                 assignee_name = bug_task.assignee.name
             bug_dict[bug_task.web_link] = (bug_task.title, bug_task.importance, assignee_name)
-
+            db.ensure_not_in_db_closed_bugs(bug_task.web_link)
         
-def log_newly_closed_bugs(master_task):
+def log_newly_closed_bugs(master_task, db, subset_bugs):
     """ log in the database all closed bugs since latest run to have stats """
-    
-    pass
+    fix_released_bugs = {}
+    project = launchpad.projects[master_task]
+    if subset_bugs:
+        bugs = searchTasks_forstatus_in_reduce_scope(project.name, subset_bugs, "Fix Released")
+    else:
+        bugs = project.searchTasks(status="Fix Released")
+    for closed_design_bug_task in bugs:
+        db.add_closed_reports(closed_design_bug_task.web_link, closed_design_bug_task.title)
+
     
 def searchTasks_forstatus_in_reduce_scope(bug_target_name, bugs, status):
     """Fake searchTask on a reduce scope"""

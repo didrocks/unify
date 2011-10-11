@@ -24,6 +24,7 @@ from unify import launchpadmanager
 launchpad = launchpadmanager.getLaunchpad(use_staging=True)
 
 from unify.bugshandler import get_bug_mastered_track_reports
+from unify.dbhandler import get_db_handler
 
 class T(unittest.TestCase):
 
@@ -37,6 +38,15 @@ class T(unittest.TestCase):
         self.upstream_target2 = launchpad.projects[self.upstream_name2]
         self.downstream_target1 = launchpad.distributions['ubuntu'].getSourcePackage(name = self.upstream_name1)
         self.downstream_target2 = launchpad.distributions['ubuntu'].getSourcePackage(name = self.upstream_name2)
+        
+        # initialise db with a temporary path
+        self.db_path = '/tmp/designify_tests.sql'
+        self.db = get_db_handler(self.db_path)
+        
+    def tearDown(self):
+        # kill db
+        get_db_handler().close_db()
+        os.remove(self.db_path)
         
     def set_status(self, bug_task, status):
         bug_task.status = status
@@ -63,7 +73,7 @@ class T(unittest.TestCase):
                                     ready_to_develop_downstream_number, ready_to_land_downstream_number, ready_to_review_number, bugs_in_invalid_state_number):
                                     
         (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = get_bug_mastered_track_reports(self.design_name, reduced_scope)
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = get_bug_mastered_track_reports(self.design_name, self.db, reduced_scope)
 
         self.assertEqual(len(untriaged_bugs), untriaged_bugs_number)
         self.assertEqual(len(officially_signed_off), officially_signed_off_number)
@@ -237,7 +247,7 @@ class T(unittest.TestCase):
         self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0)
 
         
-    ## Ready to develop/review: Composed case: multiple bug
+    ## Ready to develop/review: Composed case: multiple bug tasks
     
     def test_ready_to_develop_upstreams(self):
         '''Ready to develop with 2 upstreams task'''
@@ -337,6 +347,8 @@ class T(unittest.TestCase):
         
         self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 1, 0, 0)        
         
+        
+    # test twice the same run
 
 #
 # main
