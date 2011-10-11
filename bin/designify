@@ -20,7 +20,6 @@ import optparse
 import os
 import sys
 
-
 # Add project root directory (enable symlink, and trunk execution).
 PROJECT_ROOT_DIRECTORY = os.path.abspath(
     os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0]))))
@@ -40,7 +39,8 @@ if python_path:
     os.putenv('PYTHONPATH', "%s:%s" % (os.getenv('PYTHONPATH', ''), ':'.join(python_path))) # for subprocesses
 
 from unify import unifyconfig
-
+from unify.bugshandler import get_bug_mastered_track_reports, log_newly_closed_bugs
+from unify.dbhandler import get_db_handler
 
 LEVELS = (  logging.ERROR,
             logging.WARNING,
@@ -68,6 +68,11 @@ if __name__ == "__main__":
     logging.basicConfig(level=LEVELS[options.logging_level], format='%(asctime)s %(levelname)s %(message)s')
     
     design_task = "ayatana-design"
+    db = get_db_handler()
+    
+    # perform operations
     (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review) = get_bug_mastered_track_reports(design_task)
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, invalid_bugs) = get_bug_mastered_track_reports(design_task, db)
+    log_newly_closed_bugs(design_task, db)
+    db.close_db()
     

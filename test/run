@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.abspath('.'))
 from unify import launchpadmanager
 launchpad = launchpadmanager.getLaunchpad(use_staging=True)
 
-from unify.bugshandler import get_bug_mastered_track_reports
+from unify.bugshandler import get_bug_mastered_track_reports, log_newly_closed_bugs
 from unify.dbhandler import get_db_handler
 
 class T(unittest.TestCase):
@@ -85,6 +85,16 @@ class T(unittest.TestCase):
         
         return (untriaged_bugs, officially_signed_off, ready_to_develop_upstream, ready_to_develop_downstream,
                 ready_to_land_downstream, ready_to_review, bugs_in_invalid_state)
+                
+    def check_selected_bugs_in_db(self, selected_bugs, not_in_db_bugs = set()):
+        '''Check that only selected bugs are in db'''
+        
+        for bug in selected_bugs:
+            result = self.db.db.execute("SELECT 1 from closed_design_bugs WHERE link='%s'" % bug.web_link)
+            self.assertEqual(len([1 for item in result]), 1)
+        for bug in not_in_db_bugs:
+            result = self.db.db.execute("SELECT 1 from closed_design_bugs WHERE link='%s'" % bug.web_link)
+            self.assertEqual(len([1 for item in result]), 0)        
 
     ## Simple cases
 
@@ -347,9 +357,85 @@ class T(unittest.TestCase):
         
         self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 1, 0, 0)        
         
+    ## Closed bug tests
+    
+    def test_closed_bug(self):
+        '''Test only open closed bug and if format is correct'''
+        closed_bug = self.create_designbug_by_status('Fix Released')
+        reduced_scope = self.get_reduced_scope((closed_bug,))
         
-    # test twice the same run
+        log_newly_closed_bugs(self.design_name, self.db, reduced_scope)
+        self.check_selected_bugs_in_db(reduced_scope, set())
 
+        # Check format
+        design_task = closed_bug.bug_tasks[0]
+        result = self.db.db.execute("SELECT title, release from closed_design_bugs WHERE link='%s'" % design_task.web_link)
+        for result_bug in result:
+            self.assertEqual(result_bug['title'], design_task.title)
+            self.assertEqual(result_bug['release'], self.db.current_release)
+            
+    
+    def test_open_bug_not_in_closed(self):
+        '''Opened bugs shouldn't be in closed database'''
+        active_bug1 = self.create_designbug_by_status('New')
+        active_bug2 = self.create_designbug_by_status('Invalid')
+        active_bug3 = self.create_designbug_by_status('Triaged')
+        active_bug4 = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(active_bug4, self.upstream_target1, 'Fix Released')
+        reduced_scope = self.get_reduced_scope((active_bug1, active_bug2, active_bug3, active_bug4))
+        
+        log_newly_closed_bugs(self.design_name, self.db, reduced_scope)
+        self.check_selected_bugs_in_db(set(), reduced_scope)
+        
+    def test_open_bug_closing(self):
+        '''Open a bug, and then, close it, should be in database'''
+        active_bug = self.create_designbug_by_status('New')
+        reduced_scope = self.get_reduced_scope((active_bug,))
+        
+        log_newly_closed_bugs(self.design_name, self.db, reduced_scope)
+        self.check_selected_bugs_in_db(set(), reduced_scope)
+        
+        # close it now
+        self.set_status(active_bug.bug_tasks[0], "Fix Released")
+        reduced_scope = self.get_reduced_scope((active_bug,)) # need to recompute the scope to get new status
+        
+        log_newly_closed_bugs(self.design_name, self.db, reduced_scope)
+        self.check_selected_bugs_in_db(reduced_scope, set())
+
+    def test_revert_closed_bug(self):
+        '''Reopen a closed bug, shouldn't be in database'''
+        closed_bug = self.create_designbug_by_status('Fix Released')
+        reduced_scope = self.get_reduced_scope((closed_bug,))
+        
+        log_newly_closed_bugs(self.design_name, self.db, reduced_scope)
+        self.check_selected_bugs_in_db(reduced_scope, set())
+        
+        # close it now
+        self.set_status(closed_bug.bug_tasks[0], "New")
+        reduced_scope = self.get_reduced_scope((closed_bug,)) # need to recompute the scope to get new status
+        
+        get_bug_mastered_track_reports(self.design_name, self.db, reduced_scope) # should clean it
+        log_newly_closed_bugs(self.design_name, self.db, reduced_scope)
+        self.check_selected_bugs_in_db(set(), reduced_scope)
+        
+    def test_two_run_fix_released(self):
+        '''Test two runs of fix released bugs, should only be added once'''        
+        closed_bug = self.create_designbug_by_status('Fix Released')
+        reduced_scope = self.get_reduced_scope((closed_bug,))
+
+        for run in (1, 2):
+            log_newly_closed_bugs(self.design_name, self.db, reduced_scope)
+            self.check_selected_bugs_in_db(reduced_scope, set())
+            
+    def test_bug_with_quote(self):
+        '''Test with a bug title containing a quote'''
+        closed_bug = self.create_designbug_by_status('Fix Released')
+        closed_bug.title = "foo ' bar"
+        closed_bug.lp_save()
+        reduced_scope = self.get_reduced_scope((closed_bug,))
+        
+        log_newly_closed_bugs(self.design_name, self.db, reduced_scope)
+        self.check_selected_bugs_in_db(reduced_scope, set())
 #
 # main
 #

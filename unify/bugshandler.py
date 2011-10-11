@@ -493,8 +493,10 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
                 at_least_one_downstream = True
                 if not bug_content[target_project][False]:
                     component_to_open = launchpad.distributions['ubuntu'].getSourcePackage(name = target_project)
+                    logging.info("Adding downstream tasks for %s" % design_bug_task.web_link)
                     new_task = parent_bug.addTask(target=component_to_open)
                     bug_content[target_project][False] = (new_task.web_link, new_task.title, new_task.status, new_task.importance, None)
+                    ##bug_content[target_project][False] = (design_bug_task.web_link, "fpp", "New", "Medium", None)
                     all_downstream_closed = False # we just opened the bug, obviously not landed yet. invalidate D
                 # A
                 if status not in ('Fix Committed', 'Fix Released'):
@@ -573,7 +575,7 @@ def get_bug_master_track_bug_status(project, bugstatus, bug_dict, db, subset_bug
             bug_dict[bug_task.web_link] = (bug_task.title, bug_task.importance, assignee_name)
             db.ensure_not_in_db_closed_bugs(bug_task.web_link)
         
-def log_newly_closed_bugs(master_task, db, subset_bugs):
+def log_newly_closed_bugs(master_task, db, subset_bugs=None):
     """ log in the database all closed bugs since latest run to have stats """
     fix_released_bugs = {}
     project = launchpad.projects[master_task]

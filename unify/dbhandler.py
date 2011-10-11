@@ -46,7 +46,7 @@ class DBHandler():
     def add_closed_reports(self, bug_link, title):
         """add a new bug to the dance"""
         try:
-            self.db.execute("INSERT into closed_design_bugs (link, title, release) VALUES ('%s', '%s', '%s')" % (bug_link, title, self.current_release))
+            self.db.execute("INSERT into closed_design_bugs (link, title, release) VALUES (?, ?, ?)", (bug_link, title, self.current_release))
         except sqlite3.IntegrityError:
             pass # don't add the same bug twice
     
@@ -55,7 +55,7 @@ class DBHandler():
         self.db.connection.commit()
         self.db.close()
         self.db = None
-
+        
 
 # singleton
 db_handler = None
