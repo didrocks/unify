@@ -1,6 +1,6 @@
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
 ### BEGIN LICENSE
-# Copyright (C) YYYY Didier Roche <didrocks@ubuntu.com>
+# Copyright (C) 2011 Didier Roche <didrocks@ubuntu.com>
 # This program is free software: you can redistribute it and/or modify it 
 # under the terms of the GNU General Public License version 3, as published 
 # by the Free Software Foundation.
@@ -15,12 +15,18 @@
 ### END LICENSE
 
 from launchpadlib.launchpad import Launchpad
-launchpad = Launchpad.login_with('unify', 'edge', allow_access_levels=["WRITE_PRIVATE"])
+launchpad = None
 
-
-def getLaunchpad():
+def getLaunchpad(use_staging=False):
     '''Get THE Launchpad'''
+    global launchpad
+    if not launchpad:
+        if use_staging:
+            server = 'staging'
+        else:
+            server = 'edge'
+        launchpad = Launchpad.login_with('unify', server, allow_access_levels=["WRITE_PRIVATE"])
     
-    return launchpad
+    return launchpad    
     
 
