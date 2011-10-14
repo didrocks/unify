@@ -16,6 +16,7 @@
 
 from __future__ import absolute_import, unicode_literals
 import os
+from extra import cairoplot
 
 importance_order = ('Critical', 'High', 'Medium', 'Low', 'Wishlist', 'Undecided')
 
@@ -49,6 +50,7 @@ class WWWGenerator():
                                     ready_to_land_downstream, ready_to_review)         
         self.generate_downstream_view(ready_to_develop_upstream, ready_to_develop_downstream,
                                       ready_to_land_downstream, ready_to_review)
+        self.generate_stats({"Oneiric": [1,2,2,21,1,1,1,1,1,1,1,1,1,1,1,1], "Precise": [2,5,5], "Natty": [1]})
        
 
     def generate_design_view(self, untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
@@ -105,6 +107,32 @@ class WWWGenerator():
              ("Design changes that landed and waiting for design review", ready_to_review)])
         self.write_page_on_disk("downstream", main_content)
        
+       
+    def generate_stats(self, reviewed_bugs):
+        '''Generate the statistic page'''
+        
+        main_content = "  <h1>Statistics on design changes</h1>\n"
+        main_content += "    <h2>Number of closed and reviewed design changes per release</h2>\n"
+        
+        # generate the graph
+        data = []
+        x_labels = []
+        for release in sorted(reviewed_bugs):
+            data.append(len(reviewed_bugs[release]))
+            x_labels.append(release)
+        max_value = max(data)
+        num_relevant_digits = len(str(max_value)) - 1
+        max_graph_value = round(max_value, -num_relevant_digits) + pow(10, num_relevant_digits)
+        i = 0
+        y_labels = []
+        while (i <= max_graph_value):
+            y_labels.append(str(i))
+            i += int(max_graph_value / 9);
+        colors = [(1,0.2,0), (1,0.7,0), (1,1,0)]
+        cairoplot.bar_plot (os.path.join(self.webpath, 'reviewed_design.svg'), data, 500, 300, border = 20, grid = True, rounded_corners = False, colors = colors, h_labels=x_labels, v_labels=y_labels, max_value=max_graph_value)
+        main_content += '    <img src="reviewed_design.svg" alt="Number of bugs closed by release" />'
+        self.write_page_on_disk("stats", main_content)
+       
     def generate_subsections_by_project(self, bugs):
         '''Generate all subsections for this bugs'''
         
@@ -113,8 +141,7 @@ class WWWGenerator():
             comment = "Design changes ready for upstream work on %s" % project
             content +=  self.generate_subsection(project, comment, bugs[project], use_h3=True)
         return content
-        
-    # TODO: voir si on ne les met pas en h3 pour le "by project de upstream/downstream" + changer le css pour ça
+
     def generate_subsection(self, section_title, comment, bugs, hidden=False, use_h3=False):
         '''Generate a subsection tabular of bugs'''
         
@@ -196,3 +223,4 @@ class WWWGenerator():
         main_content += "    </table>\n"
 
         return main_content
+        
