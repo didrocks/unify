@@ -1,0 +1,255 @@
+a { text-decoration: none; color: #98C13D; }
+table { border-collapse: collapse; border-style: solid none;
+        border-width: 3px; margin-bottom: 3ex; empty-cells: show; }
+table th { text-align: left; border-style: none none solid none;
+           border-width: 3px; padding-right: 10px; }
+table td { text-align: left; border-style: none none dotted none;
+           border-width: 1px; padding-right: 10px; }
+table#byworkitem td { vertical-align: top; }
+
+table#milestones {
+    border-style: none;
+}
+
+table#milestones td.date {
+    border-left: 3px solid #98C13D;
+    white-space: nowrap;
+}
+
+table#milestones td {
+    vertical-align: bottom;
+    border-style: none;
+    border-bottom: none;
+    padding-left: 0px;
+    margin-left: 0px;
+}
+
+table#milestones td span.connector{
+    color: #98C13D;
+}
+
+td.priority_Undefined, th.priority_Undefined { color: gray; }
+td.priority_Low, th.priority_Low { color: blue; }
+td.priority_Medium, th.priority_Medium { color: #f60; }
+td.priority_High, th.priority_High { color: red; }
+td.priority_Essential, th.priority_Essential { color: red; }
+td span.implementation_status { font-size: 70%; }
+
+.status-todo a {color: orange;}
+.status-inprogress a {color: gray;}
+.status-done a {color: green;}
+.status-blocked a {color: red;}
+.status-postponed a {color: purple;}
+
+.interesting {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+
+.progress_wrap {
+    position: relative;
+    border: 1px solid black;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    margin-left: auto;
+    margin-right: auto;
+    background-color: #bdbdbd;
+}
+
+.progress_wrap, .progress_value, .progress_text {
+    width: 500px;
+    height: 30px;
+    border-radius: 5px;
+}
+
+table .progress_wrap, table .progress_value, table .progress_text {
+    width: 155px;
+}
+
+.mini_progress .progress_wrap, .mini_progress .progress_value, .mini_progress .progress_text {
+    width: 100px;
+margin: auto;
+}
+
+.mini_progress div {
+display: inline-block;
+}
+
+table.mini_progress {
+margin: 10px auto 3px;
+}
+
+table.mini_progress, table.mini_progress thead, table.mini_progress tr, table.mini_progress th, table.mini_progress td {
+border: none
+}
+
+table.mini_progress th, table.mini_progress td {
+font-weight: normal;
+padding-right: 10px;
+padding-left: 10px;
+font-size: smaller;
+}
+
+.progress_value {
+    background-color: #5bad4c;
+}
+
+.progress_value.slow_progress {
+    background-color: red;
+}
+
+.progress_value.ok_progress {
+    background-color: orange;
+}
+
+span.slow_progress {
+color: red;
+}
+
+span.ok_progress {
+color: orange;
+}
+
+.progress_text {
+    position: absolute;
+    top:0; left:0;
+
+    padding-top: 5px;
+
+    color: #fff;
+    text-align: center;
+    width: 100%;
+}
+
+body {
+background: #3d3d3d url(http://linaro.org/themes/base/images/lin-bg-grad.jpg) repeat-x top;
+font-family: Verdana, Lucida, sans-serif;
+font-size: 82.5%;
+color: #333;
+}
+
+#bgcontainer {
+background: url(http://linaro.org/themes/base/images/lin-bg-wide.jpg) no-repeat top center;
+}
+
+#centered {
+margin: auto;
+width: 980px;
+}
+
+#header {
+background: url(http://www.linaro.org/themes/base/images/lin-logo.png) no-repeat 0% 0%;
+height: 130px;
+margin: 0px auto;
+position: relative;
+width: 940px;
+}
+
+#content_pane {
+background: url(http://www.linaro.org/themes/base/images/lin-bg-cont.png) no-repeat 0% 0%;
+clear: both;
+margin: 3px auto;
+min-height: 500px;
+overflow: hidden;
+padding: 3px 17px 17px;
+}
+
+#main_content {
+width: 908px;
+background: white;
+padding: 0px 20px 20px;
+}
+
+.logolink {
+display: block;
+height: 110px;
+left: 50%;
+margin-left: -480px;
+position: absolute;
+top: 15px;
+width: 230px;
+z-index: 100;
+}
+
+#navigation {
+height: 45px;
+left: 240px;
+position: absolute;
+top: 50px;
+width: 700px;
+padding: 0px;
+margin: 0px;
+}
+
+#navigation_menu {
+float: left;
+list-style-type: disc;
+padding: 0px;
+margin: 0px;
+}
+
+#navigation_menu a {
+padding-left: 50px;
+float: left;
+font-size: 1.2em;
+line-height: 45px;
+text-decoraction: none;
+margin: 0px 2px;
+}
+
+#navigation_menu .active {
+background-color: #aaa;
+border-radius: 5px;
+}
+
+#navigation_menu li:hover {
+background-color: #eee;
+border-radius: 5px;
+}
+
+#navigation_menu .active a {
+color: #fff;
+}
+
+#overview_nav {
+width: 140px;
+background: url('overview.png') no-repeat 0% 0%;
+}
+
+#about_nav {
+width: 125px;
+background: url('about.png') no-repeat 0% 0%;
+}
+
+#individuals_nav {
+width: 125px;
+background: url('individuals.gif') no-repeat 0% 0%;
+}
+
+#teams_nav {
+width: 125px;
+background: url('teams.png') no-repeat 0% 0%;
+}
+
+#milestones_nav {
+width: 145px;
+background: url('milestones.png') no-repeat 0% 0%;
+}
+
+#navigation_menu li {
+float: left;
+list-style: none;
+}
+
+#navigation a {
+color: #333;
+}
+
+a.area {
+color: #333;
+}
+
+.overview_graph {
+margin-bottom: 30px;
+}
+

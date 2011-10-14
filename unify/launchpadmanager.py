@@ -14,6 +14,8 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 ### END LICENSE
 
+from __future__ import absolute_import, unicode_literals
+
 from launchpadlib.launchpad import Launchpad
 launchpad = None
 

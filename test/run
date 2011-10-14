@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # -*- Mode: Python; coding: utf-8; indent-tabs-mode: nil; tab-width: 4 -*-
 ### BEGIN LICENSE
 # Copyright (C) 2011 Didier Roche <didrocks@ubuntu.com>
@@ -69,17 +70,27 @@ class T(unittest.TestCase):
                     reduced_scope.add(bug_task)
         return reduced_scope
         
+    def get_number_of_by_project_bugs(self, bugs_by_project):
+        total = 0
+        for project in bugs_by_project:
+            total += len(bugs_by_project[project])
+        return total
+        
     def check_correct_number_of_bugs(self, reduced_scope, untriaged_bugs_number, officially_signed_off_number, ready_to_develop_upstream_number,
                                     ready_to_develop_downstream_number, ready_to_land_downstream_number, ready_to_review_number, bugs_in_invalid_state_number):
                                     
         (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
         ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = get_bug_mastered_track_reports(self.design_name, self.db, reduced_scope)
-
+        
+        ready_to_develop_upstream_total = self.get_number_of_by_project_bugs(ready_to_develop_upstream)
+        ready_to_develop_downstream_total = self.get_number_of_by_project_bugs(ready_to_develop_downstream)
+        ready_to_land_downstream_total = self.get_number_of_by_project_bugs(ready_to_land_downstream)
+                
         self.assertEqual(len(untriaged_bugs), untriaged_bugs_number)
         self.assertEqual(len(officially_signed_off), officially_signed_off_number)
-        self.assertEqual(len(ready_to_develop_upstream), ready_to_develop_upstream_number)
-        self.assertEqual(len(ready_to_develop_downstream), ready_to_develop_downstream_number)
-        self.assertEqual(len(ready_to_land_downstream), ready_to_land_downstream_number)
+        self.assertEqual(ready_to_develop_upstream_total, ready_to_develop_upstream_number)
+        self.assertEqual(ready_to_develop_downstream_total, ready_to_develop_downstream_number)
+        self.assertEqual(ready_to_land_downstream_total, ready_to_land_downstream_number)
         self.assertEqual(len(ready_to_review), ready_to_review_number)
         self.assertEqual(len(bugs_in_invalid_state), bugs_in_invalid_state_number)
         
@@ -147,12 +158,11 @@ class T(unittest.TestCase):
         reduced_scope = self.get_reduced_scope((ready_to_develop_upstream_bug,))
         
         (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =         self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 0, 0, 0)
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 0, 0, 0)
         # Check that the downstream task is opened as well
         self.assertEqual(len(ready_to_develop_upstream_bug.bug_tasks), 3)
 
         # TODO: check the format of the dict as well (str + regexp?)
-
 
     def test_ready_to_land_downstream_from_upstream_fix_committed(self):
         '''Bug ready for landing downstream from upstream fix committed'''
@@ -256,6 +266,15 @@ class T(unittest.TestCase):
         
         self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0)
 
+
+    def test_try_with_no_downstream_for_usptream(self):
+        '''Bug with an upstream not matching any downstream'''
+        bug_with_no_matching_downstream = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(bug_with_no_matching_downstream, "ayatana ubuntu", 'New')
+        reduced_scope = self.get_reduced_scope((bug_with_no_matching_downstream,))
+        
+        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1)
         
     ## Ready to develop/review: Composed case: multiple bug tasks
     
@@ -355,9 +374,20 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(one_task_ready_bug, self.upstream_target2, 'New') 
         reduced_scope = self.get_reduced_scope((one_task_ready_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 1, 0, 0)        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 1, 0, 0)
+       
+           
+    def test_multiple_bugs_on_same_component(self):
+        '''Test mutiple upstream bugs on same component'''
+        bug1 = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(bug1, self.upstream_target1, 'New')
+        bug2 = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(bug2, self.upstream_target1, 'New')
+        reduced_scope = self.get_reduced_scope((bug1, bug2)) 
         
-    ## Closed bug tests
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 2, 0, 0, 0, 0)        
+        
+    ## Closed and db bug tests
     
     def test_closed_bug(self):
         '''Test only open closed bug and if format is correct'''
@@ -371,7 +401,7 @@ class T(unittest.TestCase):
         design_task = closed_bug.bug_tasks[0]
         result = self.db.db.execute("SELECT title, release from closed_design_bugs WHERE link='%s'" % design_task.web_link)
         for result_bug in result:
-            self.assertEqual(result_bug['title'], design_task.title)
+            self.assertEqual(result_bug['title'], design_task.bug.title)
             self.assertEqual(result_bug['release'], self.db.current_release)
             
     
@@ -436,6 +466,8 @@ class T(unittest.TestCase):
         
         log_newly_closed_bugs(self.design_name, self.db, reduced_scope)
         self.check_selected_bugs_in_db(reduced_scope, set())
+       
+        
 #
 # main
 #

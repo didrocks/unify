@@ -14,12 +14,13 @@
 # with this program.  If not, see <http://www.gnu.org/licenses/>.
 ### END LICENSE
 
+from __future__ import absolute_import, unicode_literals
+
 import lazr
 import logging
 import os
 import re
 import textwrap
-
 
 from unify import launchpadmanager
 launchpad = launchpadmanager.getLaunchpad()
@@ -472,10 +473,10 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
             if not target_project in bug_content:
                 # create upstream and downstream task to None
                 bug_content[target_project] = {True: None, False: None}
-            assignee_name = None
+            assignee_name = ""
             if child_task.assignee:
                 assignee_name = child_task.assignee.name
-            bug_content[target_project][is_upstream] = (child_task.web_link, child_task.title, child_task.status, child_task.importance, assignee_name)
+            bug_content[target_project][is_upstream] = (child_task.web_link, child_task.bug.title, child_task.status, child_task.importance, assignee_name)
             
         # ok, now let's triage this. There are multiple cases:
         # A: 1 upstream (!= fix committed, fix released), 0 or 1 downstream matching -> some work needed by upstream dev. Opening downstream task if none (if status is valid).
@@ -489,18 +490,21 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
             # A, B or D (valid upstream bug)
             if bug_content[target_project][True] and bug_content[target_project][True][2] not in invalid_status_to_open_bug:
                 link, title, status, importance, assignee = bug_content[target_project][True]
-                # a downstream bug is needed
-                at_least_one_downstream = True
-                if not bug_content[target_project][False]:
-                    component_to_open = launchpad.distributions['ubuntu'].getSourcePackage(name = target_project)
-                    logging.info("Adding downstream tasks for %s" % design_bug_task.web_link)
-                    new_task = parent_bug.addTask(target=component_to_open)
-                    bug_content[target_project][False] = (new_task.web_link, new_task.title, new_task.status, new_task.importance, None)
-                    ##bug_content[target_project][False] = (design_bug_task.web_link, "fpp", "New", "Medium", None)
-                    all_downstream_closed = False # we just opened the bug, obviously not landed yet. invalidate D
+                # a downstream bug is maybe needed
+                try:
+                    if not bug_content[target_project][False]:
+                        component_to_open = launchpad.distributions['ubuntu'].getSourcePackage(name = target_project)
+                        new_task = parent_bug.addTask(target=component_to_open)
+                        logging.info("Adding downstream tasks for %s" % design_bug_task.web_link)
+                        bug_content[target_project][False] = (new_task.web_link, new_task.bug.title, new_task.status, new_task.importance, None)
+                        all_downstream_closed = False # we just opened the bug, obviously not landed yet. invalidate D
+                    at_least_one_downstream = True # we have at least a valid downstream bug
+                except lazr.restfulclient.errors.BadRequest:
+                    continue # this upstream doesn't count
                 # A
                 if status not in ('Fix Committed', 'Fix Released'):
-                    ready_to_develop_upstream[target_project] = (link, title, importance, assignee)
+                    bug_to_add = (link, title, importance, assignee)
+                    add_to_project_bug(ready_to_develop_upstream, target_project, bug_to_add)
                     added_somewhere = True
                     (downstream_link, downstream_title, downstream_status, downstream_importance, downstream_assignee) = bug_content[target_project][False]
                     # Something landed upstream. Ignore invalid_status_to_open_bug as this should mean
@@ -514,7 +518,8 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
                     (downstream_link, downstream_title, downstream_status, downstream_importance, downstream_assignee) = bug_content[target_project][False]
                     # B
                     if downstream_status != 'Fix Released' and (target_project != 'unity' or downstream_status not in invalid_status_to_open_bug):
-                        ready_to_land_downstream[target_project] = (downstream_link, downstream_title, downstream_importance, downstream_assignee)
+                        bug_to_add = (downstream_link, downstream_title, downstream_importance, downstream_assignee)
+                        add_to_project_bug(ready_to_land_downstream, target_project, bug_to_add)
                         all_downstream_closed = False # invalidate D
                         added_somewhere = True
                     
@@ -529,25 +534,26 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
                 at_least_one_downstream = True
                 # C
                 if status != 'Fix Released':
-                    ready_to_develop_downstream[target_project] = (link, title, importance, assignee)
+                    bug_to_add = (link, title, importance, assignee)
+                    add_to_project_bug(ready_to_develop_downstream, target_project, bug_to_add)
                     added_somewhere = True
                     all_downstream_closed = False # invalidate D
         
         # deal with D
         if at_least_one_downstream and all_downstream_closed:
             # assignee and importance is the design bug then
-            assignee_name = None
+            assignee_name = ""
             if design_bug_task.assignee:
                 assignee_name = design_bug_task.assignee.name
-            ready_to_review[design_bug_task.web_link] = (design_bug_task.title, design_bug_task.importance,
+            ready_to_review[design_bug_task.web_link] = (design_bug_task.bug.title, design_bug_task.importance,
                                                          assignee_name)
             added_somewhere = True
             
         if not added_somewhere:
-            assignee_name = None
+            assignee_name = ""
             if design_bug_task.assignee:
                 assignee_name = design_bug_task.assignee.name
-            bugs_in_invalid_state[design_bug_task.web_link] = (design_bug_task.title, design_bug_task.importance,
+            bugs_in_invalid_state[design_bug_task.web_link] = (design_bug_task.bug.title, design_bug_task.importance,
                                                                 assignee_name)
         db.ensure_not_in_db_closed_bugs(design_bug_task.web_link)
 
@@ -569,10 +575,10 @@ def get_bug_master_track_bug_status(project, bugstatus, bug_dict, db, subset_bug
         bugs = project.searchTasks(status=bugstatus)
     for bug_task in bugs:
         if not bug_task.bug.duplicate_of:
-            assignee_name = None
+            assignee_name = ""
             if bug_task.assignee:
                 assignee_name = bug_task.assignee.name
-            bug_dict[bug_task.web_link] = (bug_task.title, bug_task.importance, assignee_name)
+            bug_dict[bug_task.web_link] = (bug_task.bug.title, bug_task.importance, assignee_name)
             db.ensure_not_in_db_closed_bugs(bug_task.web_link)
         
 def log_newly_closed_bugs(master_task, db, subset_bugs=None):
@@ -584,8 +590,15 @@ def log_newly_closed_bugs(master_task, db, subset_bugs=None):
     else:
         bugs = project.searchTasks(status="Fix Released")
     for closed_design_bug_task in bugs:
-        db.add_closed_reports(closed_design_bug_task.web_link, closed_design_bug_task.title)
-
+        db.add_closed_reports(closed_design_bug_task.web_link, closed_design_bug_task.bug.title)
+        
+def add_to_project_bug(bugs, target_project, bug_to_add):
+    """Add (and create if needed) to a set of bug for a project"""
+    try:
+        bugs[target_project].add(bug_to_add)
+    except KeyError:
+        bugs[target_project] = set()
+        bugs[target_project].add(bug_to_add)
     
 def searchTasks_forstatus_in_reduce_scope(bug_target_name, bugs, status):
     """Fake searchTask on a reduce scope"""
