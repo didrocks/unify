@@ -16,6 +16,7 @@
 
 from __future__ import absolute_import, unicode_literals
 import os
+import time
 from extra import cairoplot
 
 importance_order = ('Critical', 'High', 'Medium', 'Low', 'Wishlist', 'Undecided')
@@ -29,6 +30,7 @@ class WWWGenerator():
             self.header = f.read()
         with open(os.path.join(self.sourcepath, 'footer.html.inc'), 'r') as f:
             self.footer = f.read()
+        self.generated_date = time.strftime('%A %B %d %Y %H:%M:%S %z')
         
     def write_page_on_disk(self, pagename, content):
         '''Write the actual page on disk'''
@@ -37,10 +39,12 @@ class WWWGenerator():
             f.write(self.header)
             f.write(content.encode('utf-8'))
             f.write(self.footer)
+            f.write("    <p>Last updated: %s</p>\n" % self.generated_date)
+            f.write("   </div>\n </footer>\n</body>\n</html>")
         
     def generate_pages_workpages(self, untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
                                  ready_to_develop_downstream, ready_to_land_downstream,
-                                 ready_to_review, invalid_bugs):
+                                 ready_to_review, invalid_bugs, closed_reports_by_release):
         '''Generate all pages with the data'''
 
         self.generate_design_view(untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
@@ -50,7 +54,7 @@ class WWWGenerator():
                                     ready_to_land_downstream, ready_to_review)         
         self.generate_downstream_view(ready_to_develop_upstream, ready_to_develop_downstream,
                                       ready_to_land_downstream, ready_to_review)
-        self.generate_stats({"Oneiric": [1,2,2,21,1,1,1,1,1,1,1,1,1,1,1,1], "Precise": [2,5,5], "Natty": [1]})
+        self.generate_stats(closed_reports_by_release)
        
 
     def generate_design_view(self, untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
@@ -118,7 +122,7 @@ class WWWGenerator():
         data = []
         x_labels = []
         for release in sorted(reviewed_bugs):
-            data.append(len(reviewed_bugs[release]))
+            data.append(reviewed_bugs[release])
             x_labels.append(release)
         max_value = max(data)
         num_relevant_digits = len(str(max_value)) - 1

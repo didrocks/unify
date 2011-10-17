@@ -34,7 +34,7 @@ class DBHandler():
         db_conn = sqlite3.connect(db_path)
         db_conn.row_factory = sqlite3.Row
         self.db = db_conn.cursor()
-        self.current_release = 'precise'
+        self.current_release = 'Precise'
         
         try:
             self.db.execute('CREATE TABLE closed_design_bugs (link VARCHAR(80) PRIMARY KEY, title VARCHAR(80), release VARCHAR(10));')
@@ -45,12 +45,22 @@ class DBHandler():
         """reopen a previously closed bugs"""
         self.db.execute("DELETE from closed_design_bugs where link='%s'" % bug_link)
         
-    def add_closed_reports(self, bug_link, title):
+    def add_closed_reports(self, bug_link, title, release=None):
         """add a new bug to the dance"""
+        if not release:
+            release = self.current_release
         try:
-            self.db.execute("INSERT into closed_design_bugs (link, title, release) VALUES (?, ?, ?)", (bug_link, title, self.current_release))
+            self.db.execute("INSERT into closed_design_bugs (link, title, release) VALUES (?, ?, ?)", (bug_link, title, release))
         except sqlite3.IntegrityError:
             pass # don't add the same bug twice
+            
+    def get_closed_reports_by_release(self):
+        """Get closed reports by release"""
+        results = self.db.execute("SELECT release, COUNT(*) from closed_design_bugs GROUP BY release")
+        result_by_release = {}
+        for line in results:
+            result_by_release[line[0]] = line[1]
+        return result_by_release
     
     def close_db(self):
         """close db"""
@@ -66,3 +76,21 @@ def get_db_handler(dbpath=None):
     if not db_handler or not db_handler.db:
         db_handler = DBHandler(dbpath)
     return db_handler
+    
+    
+# only used to first import history
+def first_history_import():
+    from unify import launchpadmanager
+    launchpad = launchpadmanager.getLaunchpad()
+    db = get_db_handler() 
+    project = launchpad.projects["ayatana-design"]
+    for closed_design_bug_task in project.searchTasks(status="Fix Released"):
+        if ("udn" in closed_design_bug_task.bug.tags):
+            release = "Natty"
+        elif ("udo" in closed_design_bug_task.bug.tags):
+            release = "Oneiric"
+        else:
+            release = "N.A"
+        db.add_closed_reports(closed_design_bug_task.web_link, closed_design_bug_task.bug.title, release=release)
+    db.close_db()
+

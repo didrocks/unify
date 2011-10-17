@@ -11,10 +11,4 @@
 <br />
 <br />
 Problems with this site? <a href="https://bugs.launchpad.net/unify/+filebug">File a Bug</a></p>
-   </div>
-  </div>
- </footer>
-</body>
-
-</html>
 
