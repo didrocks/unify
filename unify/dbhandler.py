@@ -85,9 +85,9 @@ def first_history_import():
     db = get_db_handler() 
     project = launchpad.projects["ayatana-design"]
     for closed_design_bug_task in project.searchTasks(status="Fix Released"):
-        if ("udn" in closed_design_bug_task.bug.tags):
+        if ("reviewedbydesign" in closed_design_bug_task.bug.tags):
             release = "Natty"
-        elif ("udo" in closed_design_bug_task.bug.tags):
+        elif ("reviewedbydesigno" in closed_design_bug_task.bug.tags):
             release = "Oneiric"
         else:
             release = "N.A"

@@ -70,7 +70,7 @@ class WWWGenerator():
         comment = "Bugs that are not triaged and have an ayatana-design task"
         main_content += self.generate_subsection("Untriaged design bugs", comment, untriaged_bugs, hidden=True)
         comment = "Design bugs that are in a inconsistent state"
-        main_content += self.generate_subsection("Inconsistant design bugs", comment, invalid_bugs, hidden=True)
+        main_content += self.generate_subsection("Inconsistent design bugs", comment, invalid_bugs, hidden=True)
         main_content += self.generate_summary(
             [("Design changes ready to develop upstream", ready_to_develop_upstream),
              ("Design changes ready to develop downstream", ready_to_develop_downstream),
@@ -84,7 +84,8 @@ class WWWGenerator():
         main_content += '''<h2>Upstream projects that can be worked on</h2>
     <div class="collapsable" id="div_upstream_work">
 '''
-        main_content += self.generate_subsections_by_project(ready_to_develop_upstream)
+        subsection_title = "Design changes ready for upstream work on %s"
+        main_content += self.generate_subsections_by_project(ready_to_develop_upstream, subsection_title)
         main_content += "    </div>\n"
         # TODO: check why ready_to_review is 18 as land downstream and 6 on the other slide
         main_content += self.generate_summary(
@@ -99,12 +100,14 @@ class WWWGenerator():
         main_content += '''<h2>Downstream projects that can be worked on</h2>
     <div class="collapsable" id="div_downstream_work">
 '''
-        main_content += self.generate_subsections_by_project(ready_to_develop_downstream)
+        subsection_title = "Design changes ready for downstream work on %s"
+        main_content += self.generate_subsections_by_project(ready_to_develop_downstream, subsection_title)
         main_content += '''    </div>
     <h2>Upstream changes that are ready to land in distro</h2>
     <div class="collapsable" id="div_downstream_land">
-'''        
-        main_content += self.generate_subsections_by_project(ready_to_land_downstream)
+'''
+        subsection_title = "Design changes ready to land on %s"
+        main_content += self.generate_subsections_by_project(ready_to_land_downstream, subsection_title)
         main_content += "    </div>\n"
         main_content += self.generate_summary(
             [("Design changes that are ready for upstream to work on", ready_to_develop_upstream),
@@ -137,12 +140,12 @@ class WWWGenerator():
         main_content += '    <img src="reviewed_design.svg" alt="Number of bugs closed by release" />'
         self.write_page_on_disk("stats", main_content)
        
-    def generate_subsections_by_project(self, bugs):
+    def generate_subsections_by_project(self, bugs, subsection_title):
         '''Generate all subsections for this bugs'''
         
         content = ""
         for project in bugs:
-            comment = "Design changes ready for upstream work on %s" % project
+            comment = subsection_title % project
             content +=  self.generate_subsection(project, comment, bugs[project], use_h3=True)
         return content
 

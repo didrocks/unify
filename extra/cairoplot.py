@@ -616,8 +616,8 @@ class BarPlot(Plot):
             self.render_vert_labels()
 
     def render_horz_labels(self):
-        step = (self.width - 20 - self.borders[HORZ] - self.border)/len(self.labels[HORZ])
-        x = self.borders[HORZ] + step/2 + 10
+        step = (self.width - 40 - self.borders[HORZ] - self.border)/len(self.labels[HORZ])
+        x = self.borders[HORZ] + step/2 + 20
 
         for item in self.labels[HORZ]:
             self.context.set_source_rgb(*self.label_color)
