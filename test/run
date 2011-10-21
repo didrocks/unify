@@ -38,6 +38,7 @@ class T(unittest.TestCase):
         # Update this to current serie
         self.current_serie = 'P-series'
         self.old_serie = "Oneiric"
+        self.old_old_serie = "Natty" # because staging isn't up to date
         self.design_name = 'oneconf'
         self.upstream_name1 = 'unity'
         self.upstream_name2 = 'compiz'
@@ -320,6 +321,27 @@ class T(unittest.TestCase):
         reduced_scope = self.get_reduced_scope((bug,)) 
         
         self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1, 0)
+        
+    def test_wont_fix_old_milestoned_downstream(self):   
+        '''Test a bug with one milestone on previous release with won't fix status'''
+        bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(bug, self.upstream_target1, 'Triaged')
+        self.add_bugtask_with_status(bug, self.downstream_target1, 'Triaged')
+        for serie in launchpad.distributions['Ubuntu'].series:
+            # Oneiric is an old release, take that one
+            if serie.displayname == self.old_old_serie:
+                old_old = serie
+                continue
+        # Add the old old target as launchpad staging is laggin behind
+        targeted_bug = bug.addNomination(target=old_old)
+        targeted_bug.approve()
+        # Ensure we have the right status in the bug we want
+        for targeted_bug in bug.bug_tasks:
+            if self.old_old_serie in targeted_bug.bug_target_name:
+                self.set_status(targeted_bug, "Won't Fix")
+        reduced_scope = self.get_reduced_scope((bug,)) 
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0, 0)
         
         
     def test_ignore_upstream_with_bug_watch(self):

@@ -474,9 +474,12 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
             if target_project == master_task:
                 continue
             # ignore old release status
+            skip = False
             for old_release in old_releases:
                 if old_release in target_project:
-                    continue
+                    skip = True
+            if skip:
+                continue
             # ignore if there is a bug watch (not a real upstream bug for us to work on)
             if child_task.bug_watch:
                 continue

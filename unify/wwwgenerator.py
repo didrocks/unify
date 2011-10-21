@@ -137,7 +137,7 @@ class WWWGenerator():
         while (i <= max_graph_value):
             y_labels.append(str(i))
             i += int(max_graph_value / 9);
-        colors = [(1,0.2,0), (1,0.7,0), (1,1,0)]
+        colors = [(1,0.2,0), (1,0.7,0), (1,1,0), (0,1,0)]
         cairoplot.bar_plot (os.path.join(self.webpath, 'reviewed_design.svg'), data, 500, 300, border = 20, grid = True, rounded_corners = False, colors = colors, h_labels=x_labels, v_labels=y_labels, max_value=max_graph_value)
         main_content += '    <img src="reviewed_design.svg" alt="Number of bugs closed by release" />'
         self.write_page_on_disk("stats", main_content)
