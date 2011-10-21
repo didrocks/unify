@@ -74,7 +74,7 @@ if __name__ == "__main__":
     db = get_db_handler()
     
     # perform operations
-    (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+    (untriaged_bugs, officially_signed_off, design_on_hold, ready_to_develop_upstream,
         ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, invalid_bugs) = get_bug_mastered_track_reports(design_task, db)
     log_newly_closed_bugs(design_task, db)
     
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         
     # write status
     www_gen = WWWGenerator()
-    www_gen.generate_pages_workpages(untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+    www_gen.generate_pages_workpages(untriaged_bugs, officially_signed_off, design_on_hold, ready_to_develop_upstream,
                                      ready_to_develop_downstream, ready_to_land_downstream,
                                      ready_to_review, invalid_bugs, stat_bugs)
                                      

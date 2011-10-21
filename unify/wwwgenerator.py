@@ -42,12 +42,12 @@ class WWWGenerator():
             f.write("    <p>Last updated: %s</p>\n" % self.generated_date)
             f.write("   </div>\n </footer>\n</body>\n</html>")
         
-    def generate_pages_workpages(self, untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+    def generate_pages_workpages(self, untriaged_bugs, officially_signed_off, design_on_hold, ready_to_develop_upstream,
                                  ready_to_develop_downstream, ready_to_land_downstream,
                                  ready_to_review, invalid_bugs, closed_reports_by_release):
         '''Generate all pages with the data'''
 
-        self.generate_design_view(untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        self.generate_design_view(untriaged_bugs, officially_signed_off,  design_on_hold, ready_to_develop_upstream,
                                  ready_to_develop_downstream, ready_to_land_downstream,
                                  ready_to_review, invalid_bugs)
         self.generate_upstream_view(officially_signed_off, ready_to_develop_upstream,
@@ -57,7 +57,7 @@ class WWWGenerator():
         self.generate_stats(closed_reports_by_release)
        
 
-    def generate_design_view(self, untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+    def generate_design_view(self, untriaged_bugs, officially_signed_off, design_on_hold, ready_to_develop_upstream,
                              ready_to_develop_downstream, ready_to_land_downstream, ready_to_review,
                              invalid_bugs):
         '''Generate the design page'''
@@ -67,6 +67,8 @@ class WWWGenerator():
         main_content += self.generate_subsection("Design changes ready to review", comment, ready_to_review)
         comment = "Design changes are officially signed off, but that didn't get handed over upstream or downstream"
         main_content += self.generate_subsection("Design changes signed off but not handed over", comment, officially_signed_off)
+        comment = "Design changes that are on hold (Opinion, Incomplete)"
+        main_content += self.generate_subsection("Design changes on hold", comment, design_on_hold)
         comment = "Bugs that are not triaged and have an ayatana-design task"
         main_content += self.generate_subsection("Untriaged design bugs", comment, untriaged_bugs, hidden=True)
         comment = "Design bugs that are in a inconsistent state"

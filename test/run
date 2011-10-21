@@ -85,10 +85,10 @@ class T(unittest.TestCase):
             total += len(bugs_by_project[project])
         return total
         
-    def check_correct_number_of_bugs(self, reduced_scope, untriaged_bugs_number, officially_signed_off_number, ready_to_develop_upstream_number,
+    def check_correct_number_of_bugs(self, reduced_scope, untriaged_bugs_number, officially_signed_off_number, bugs_on_design_hold_number, ready_to_develop_upstream_number,
                                     ready_to_develop_downstream_number, ready_to_land_downstream_number, ready_to_review_number, bugs_in_invalid_state_number):
                                     
-        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
+        (untriaged_bugs, officially_signed_off, bugs_on_design_hold, ready_to_develop_upstream,
         ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = get_bug_mastered_track_reports(self.design_name, self.db, reduced_scope)
         
         ready_to_develop_upstream_total = self.get_number_of_by_project_bugs(ready_to_develop_upstream)
@@ -97,14 +97,15 @@ class T(unittest.TestCase):
                 
         self.assertEqual(len(untriaged_bugs), untriaged_bugs_number)
         self.assertEqual(len(officially_signed_off), officially_signed_off_number)
+        self.assertEqual(len(bugs_on_design_hold), bugs_on_design_hold_number)
         self.assertEqual(ready_to_develop_upstream_total, ready_to_develop_upstream_number)
         self.assertEqual(ready_to_develop_downstream_total, ready_to_develop_downstream_number)
         self.assertEqual(ready_to_land_downstream_total, ready_to_land_downstream_number)
         self.assertEqual(len(ready_to_review), ready_to_review_number)
         self.assertEqual(len(bugs_in_invalid_state), bugs_in_invalid_state_number)
         
-        return (untriaged_bugs, officially_signed_off, ready_to_develop_upstream, ready_to_develop_downstream,
-                ready_to_land_downstream, ready_to_review, bugs_in_invalid_state)
+        return (untriaged_bugs, officially_signed_off,  bugs_on_design_hold, ready_to_develop_upstream,
+                ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state)
                 
     def check_selected_bugs_in_db(self, selected_bugs, not_in_db_bugs = set()):
         '''Check that only selected bugs are in db'''
@@ -126,7 +127,7 @@ class T(unittest.TestCase):
         inprogress_bug = self.create_designbug_by_status('In Progress')
         reduced_scope = (new_bug.bug_tasks[0], confirmed_bug.bug_tasks[0], inprogress_bug.bug_tasks[0])
         
-        self.check_correct_number_of_bugs(reduced_scope, 3, 0, 0, 0, 0, 0, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 3, 0, 0, 0, 0, 0, 0, 0)
 
 
     def test_invalid_bug(self):
@@ -134,10 +135,9 @@ class T(unittest.TestCase):
         
         invalid_bug = self.create_designbug_by_status('Invalid')
         wontfix_bug = self.create_designbug_by_status('Won\'t Fix')
-        opinion_bug = self.create_designbug_by_status('Opinion')        
-        reduced_scope = (invalid_bug.bug_tasks[0], wontfix_bug.bug_tasks[0], opinion_bug.bug_tasks[0])
+        reduced_scope = (invalid_bug.bug_tasks[0], wontfix_bug.bug_tasks[0])
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 0, 0)
 
 
     def test_officially_signed_off(self):
@@ -146,8 +146,16 @@ class T(unittest.TestCase):
         officially_signed_off_bug = self.create_designbug_by_status('Triaged')
         reduced_scope = (officially_signed_off_bug.bug_tasks[0],)
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 1, 0, 0, 0, 0, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 1, 0, 0, 0, 0, 0, 0)
 
+    def test_on_design_hold_bug(self):
+        '''Opinion and Incomplete design are on hold design bugs'''
+        
+        opinion_bug = self.create_designbug_by_status('Opinion')
+        incomplete_bug = self.create_designbug_by_status('Incomplete')        
+        reduced_scope = (opinion_bug.bug_tasks[0], incomplete_bug.bug_tasks[0])
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 2, 0, 0, 0, 0, 0)
 
     def test_ready_to_develop_with_no_upstream_or_downstream_bug(self):
         '''Ready to develop with no upstream nor downstream bug'''
@@ -155,7 +163,7 @@ class T(unittest.TestCase):
         ready_to_develop_bug = self.create_designbug_by_status('Fix Committed')
         reduced_scope = (ready_to_develop_bug.bug_tasks[0],)
 
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 0, 1)
 
     ## Ready to develop/review: simple case
 
@@ -166,8 +174,8 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_develop_upstream_bug, self.upstream_target1, 'New')
         reduced_scope = self.get_reduced_scope((ready_to_develop_upstream_bug,))
         
-        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 0, 0, 0)
+        (untriaged_bugs, officially_signed_off, bugs_on_design_hold, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0, 0)
         # Check that the downstream task is opened as well
         self.assertEqual(len(ready_to_develop_upstream_bug.bug_tasks), 3)
 
@@ -179,8 +187,8 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_land_downstream_bug, self.upstream_target1, 'Fix Committed')
         reduced_scope = self.get_reduced_scope((ready_to_land_downstream_bug,))
         
-        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0)
+        (untriaged_bugs, officially_signed_off, bugs_on_design_hold, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0, 0)
         # Check that the downstream task is opened as well
         self.assertEqual(len(ready_to_land_downstream_bug.bug_tasks), 3)
 
@@ -191,28 +199,28 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_land_downstream_bug, self.upstream_target1, 'Fix Released')
         reduced_scope = self.get_reduced_scope((ready_to_land_downstream_bug,))
         
-        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0)
+        (untriaged_bugs, officially_signed_off, bugs_on_design_hold, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0, 0)
         # Check that the downstream task is opened as well
         self.assertEqual(len(ready_to_land_downstream_bug.bug_tasks), 3)
 
 
     def test_ready_to_develop_downstream(self):
-        '''Bug ready for an donwstream development'''
+        '''Bug ready for an downstream development'''
         ready_to_develop_downstream_bug = self.create_designbug_by_status('Fix Committed')
         self.add_bugtask_with_status(ready_to_develop_downstream_bug, self.downstream_target1, 'New')
         reduced_scope = self.get_reduced_scope((ready_to_develop_downstream_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0, 0)
 
 
     def test_ready_to_develop_downstream_fix_committed(self):
-        '''Bug ready for an donwstream development even fix committed'''
+        '''Bug ready for an downstream development even fix committed'''
         ready_to_develop_downstream_bug = self.create_designbug_by_status('Fix Committed')
         self.add_bugtask_with_status(ready_to_develop_downstream_bug, self.downstream_target1, 'Fix Committed')
         reduced_scope = self.get_reduced_scope((ready_to_develop_downstream_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0, 0)
 
 
     def test_ready_for_downstream_dev_with_invalid_upstream_task(self):
@@ -222,7 +230,7 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target1, 'New')
         reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0, 0)
 
 
     def test_ready_for_design_review_upstream_downstream(self):
@@ -232,7 +240,7 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_review_bug, self.downstream_target1, 'Fix Released')
         reduced_scope = self.get_reduced_scope((ready_to_review_bug,))
 
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1, 0)
 
         
     def test_ready_for_design_review_with_downstream(self):
@@ -241,7 +249,7 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_review_bug, self.downstream_target1, 'Fix Released')
         reduced_scope = self.get_reduced_scope((ready_to_review_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1, 0)
 
 
     def test_ready_for_design_review_with_downstream_and_invalid_upstream(self):
@@ -251,7 +259,7 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_review_bug, self.downstream_target1, 'Fix Released')
         reduced_scope = self.get_reduced_scope((ready_to_review_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1, 0)
 
 
     def test_ready_to_develop_upstream_even_with_invalid_downstream(self):
@@ -262,7 +270,7 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_for_nothing_bug, self.downstream_target2, 'Invalid')
         reduced_scope = self.get_reduced_scope((ready_for_nothing_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 0, 0, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0, 0)
 
         
     def test_ready_to_land_downstream_with_invalid_downstream(self):
@@ -273,7 +281,7 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_for_nothing_bug, self.downstream_target2, 'Invalid')
         reduced_scope = self.get_reduced_scope((ready_for_nothing_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0, 0)
 
 
     def test_try_with_no_downstream_for_usptream(self):
@@ -282,8 +290,8 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(bug_with_no_matching_downstream, launchpad.projects["ayatana-ubuntu"], 'New')
         reduced_scope = self.get_reduced_scope((bug_with_no_matching_downstream,))
         
-        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1)
+        (untriaged_bugs, officially_signed_off, bugs_on_design_hold, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 0, 1)
         
         
     def test_ignore_milestoned_downstream(self):
@@ -311,7 +319,7 @@ class T(unittest.TestCase):
                 self.set_status(targeted_bug, 'Fix Released')
         reduced_scope = self.get_reduced_scope((bug,)) 
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1, 0)
         
         
     def test_ignore_upstream_with_bug_watch(self):
@@ -322,10 +330,9 @@ class T(unittest.TestCase):
         watch = bug.addWatch(bug_tracker=gnome_tracker, remote_bug=28237)
         upstream_task.bug_watch = watch
         upstream_task.lp_save()
-        print bug
         reduced_scope = self.get_reduced_scope((bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0) 
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0, 0) 
         
         
     ## Ready to develop/review: Composed case: multiple bug tasks
@@ -337,8 +344,8 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_develop_bug, self.upstream_target2, 'New')
         reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
         
-        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 2, 0, 0, 0, 0)
+        (untriaged_bugs, officially_signed_off, bugs_on_design_hold, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 2, 0, 0, 0, 0)
         for target in (self.upstream_name1, self.upstream_name2):
             self.assertIn(target, ready_to_develop_upstream)
 
@@ -350,8 +357,8 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target2, 'New')
         reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
         
-        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 2, 0, 0, 0)        
+        (untriaged_bugs, officially_signed_off, bugs_on_design_hold, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 2, 0, 0, 0)        
         for target in (self.upstream_name1, self.upstream_name2):
             self.assertIn(target, ready_to_develop_downstream)
 
@@ -364,8 +371,8 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target2, 'New')                
         reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
         
-        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 2, 0, 0, 0)
+        (untriaged_bugs, officially_signed_off, bugs_on_design_hold, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 2, 0, 0, 0)
         for target in (self.upstream_name1, self.upstream_name2):
             self.assertIn(target, ready_to_develop_downstream)
 
@@ -378,8 +385,8 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target2, 'New')                
         reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
         
-        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 2, 0, 0, 0)
+        (untriaged_bugs, officially_signed_off, bugs_on_design_hold, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 2, 0, 0, 0)
         for target in (self.upstream_name1, self.upstream_name2):
             self.assertIn(target, ready_to_develop_downstream)
 
@@ -392,8 +399,8 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_to_develop_bug, self.downstream_target2, 'New')                
         reduced_scope = self.get_reduced_scope((ready_to_develop_bug,))
         
-        (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
-        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0)
+        (untriaged_bugs, officially_signed_off, bugs_on_design_hold, ready_to_develop_upstream,
+        ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) =  self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 1, 0, 0, 0)
         # right downstream name to work on
         self.assertIn(self.upstream_name2, ready_to_develop_downstream)
 
@@ -406,7 +413,7 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(ready_for_nothing_bug, self.downstream_target2, 'Invalid')
         reduced_scope = self.get_reduced_scope((ready_for_nothing_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 0, 1)
 
 
     def test_only_on_task_ready_to_review(self):
@@ -416,7 +423,7 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(one_task_ready_bug, self.upstream_target2, 'New')
         reduced_scope = self.get_reduced_scope((one_task_ready_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 0, 0, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 0, 0, 0)
         
         
     def test_only_on_task_ready_to_land(self):
@@ -426,7 +433,7 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(one_task_ready_bug, self.upstream_target2, 'New') 
         reduced_scope = self.get_reduced_scope((one_task_ready_bug,))
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 1, 0, 1, 0, 0)
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 1, 0, 1, 0, 0)
        
            
     def test_multiple_bugs_on_same_component(self):
@@ -437,7 +444,7 @@ class T(unittest.TestCase):
         self.add_bugtask_with_status(bug2, self.upstream_target1, 'New')
         reduced_scope = self.get_reduced_scope((bug1, bug2)) 
         
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 2, 0, 0, 0, 0)        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 2, 0, 0, 0, 0)        
         
     ## Closed and db bug tests
     

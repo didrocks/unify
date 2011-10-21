@@ -427,20 +427,22 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
     subset_bugs is for unit tests
     
     return: bugs not yet triaged (a)
-            changes officially signed off but not yet handed over to a developer (b)
-            changes officially signed off and handed over to a canonical upstream developer (c)
-            changes officially signed off and handed over to a canonical downstream developer (d)
-            changes officially signed off, worked by canonical upstream and ready to land in the distro (e)
-            changes ready to review for design in distro (f)
-            bugs in invalid shape (g)
+            bugs on design hold (b)
+            changes officially signed off but not yet handed over to a developer (c)
+            changes officially signed off and handed over to a canonical upstream developer (d)
+            changes officially signed off and handed over to a canonical downstream developer (e)
+            changes officially signed off, worked by canonical upstream and ready to land in the distro (f)
+            changes ready to review for design in distro (g)
+            bugs in invalid shape (h)
             
-            a, b, f, g bugs are a dict of bug_link: (bug title, importance, assignee)
-            c, d, e bugs are dict of projects: (bug_link, bug_title, importance, assignee)"""
+            a, b, c, g, h bugs are a dict of bug_link: (bug title, importance, assignee)
+            d, e, f bugs are dict of projects: (bug_link, bug_title, importance, assignee)"""
 
     project = launchpad.projects[master_task]
 
     untriaged_bugs = {}
     officially_signed_off = {}
+    bugs_on_design_hold = {}
     ready_to_develop_upstream = {}
     ready_to_develop_downstream = {}
     ready_to_land_downstream = {}
@@ -452,7 +454,9 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
     get_bug_master_track_bug_status(project, "Confirmed", untriaged_bugs, db, subset_bugs)
     get_bug_master_track_bug_status(project, "Triaged", officially_signed_off, db, subset_bugs)
     get_bug_master_track_bug_status(project, "In Progress", untriaged_bugs, db, subset_bugs)
-            
+    get_bug_master_track_bug_status(project, "Incomplete", bugs_on_design_hold, db, subset_bugs)
+    get_bug_master_track_bug_status(project, "Opinion", bugs_on_design_hold, db, subset_bugs)    
+
     # More complicate cases where it can be either ready to develop upstream, 
     # or ready to land/develop downstream
     if subset_bugs:
@@ -566,6 +570,7 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
 
     return (untriaged_bugs,
             officially_signed_off,
+            bugs_on_design_hold,
             ready_to_develop_upstream,
             ready_to_develop_downstream,
             ready_to_land_downstream,
