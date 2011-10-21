@@ -473,6 +473,9 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
             for old_release in old_releases:
                 if old_release in target_project:
                     continue
+            # ignore if there is a bug watch (not a real upstream bug for us to work on)
+            if child_task.bug_watch:
+                continue
             (is_upstream, target_project) = reportUpstreamName(target_project)                
             if not target_project in bug_content:
                 # create upstream and downstream task to None
