@@ -279,6 +279,35 @@ class T(unittest.TestCase):
         (untriaged_bugs, officially_signed_off, ready_to_develop_upstream,
         ready_to_develop_downstream, ready_to_land_downstream, ready_to_review, bugs_in_invalid_state) = self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 0, 1)
         
+        
+    def test_ignore_milestoned_downstream(self):
+        '''Test multiple milestoned downstream to ensure their status are ignored'''
+        bug = self.create_designbug_by_status('Fix Committed')
+        self.add_bugtask_with_status(bug, self.upstream_target1, 'Fix Committed')
+        self.add_bugtask_with_status(bug, self.downstream_target1, 'Fix Released')
+        for serie in launchpad.distributions['Ubuntu'].series:
+            # Oneiric is an old release, take that one
+            if serie.displayname == self.old_serie:
+                old = serie
+            if serie.displayname == self.current_serie.lower():
+                current = serie
+        # Add the current target as launchpad staging can lag behind
+        targeted_bug = bug.addNomination(target=current)
+        targeted_bug.approve()        
+        targeted_bug = bug.addNomination(target=old)
+        targeted_bug.approve()
+        # Ensure we have the right status in the bug we want (sometimes launchpad staging is lagging behind)
+        for targeted_bug in bug.bug_tasks:
+            if self.old_serie in targeted_bug.bug_target_name:
+                # will be New, shouldn't affect design "ready to review"
+                self.set_status(targeted_bug, 'New')
+            if self.current_serie in targeted_bug.bug_target_name:
+                self.set_status(targeted_bug, 'Fix Released')
+        reduced_scope = self.get_reduced_scope((bug,)) 
+        
+        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0)
+        
+        
     ## Ready to develop/review: Composed case: multiple bug tasks
     
     def test_ready_to_develop_upstreams(self):
@@ -389,33 +418,6 @@ class T(unittest.TestCase):
         reduced_scope = self.get_reduced_scope((bug1, bug2)) 
         
         self.check_correct_number_of_bugs(reduced_scope, 0, 0, 2, 0, 0, 0, 0)        
-
-    def test_ignore_milestoned_downstream(self):
-        '''Test multiple milestoned downstream to ensure their status are ignored'''
-        bug = self.create_designbug_by_status('Fix Committed')
-        self.add_bugtask_with_status(bug, self.upstream_target1, 'Fix Committed')
-        self.add_bugtask_with_status(bug, self.downstream_target1, 'Fix Released')
-        for serie in launchpad.distributions['Ubuntu'].series:
-            # Oneiric is an old release, take that one
-            if serie.displayname == self.old_serie:
-                old = serie
-            if serie.displayname == self.current_serie.lower():
-                current = serie
-        # Add the current target as launchpad staging can lag behind
-        targeted_bug = bug.addNomination(target=current)
-        targeted_bug.approve()        
-        targeted_bug = bug.addNomination(target=old)
-        targeted_bug.approve()
-        # Ensure we have the right status in the bug we want (sometimes launchpad staging is lagging behind)
-        for targeted_bug in bug.bug_tasks:
-            if self.old_serie in targeted_bug.bug_target_name:
-                # will be New, shouldn't affect design "ready to review"
-                self.set_status(targeted_bug, 'New')
-            if self.current_serie in targeted_bug.bug_target_name:
-                self.set_status(targeted_bug, 'Fix Released')
-        reduced_scope = self.get_reduced_scope((bug,)) 
-        
-        self.check_correct_number_of_bugs(reduced_scope, 0, 0, 0, 0, 0, 1, 0)
         
     ## Closed and db bug tests
     
