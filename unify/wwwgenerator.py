@@ -16,6 +16,7 @@
 
 from __future__ import absolute_import, unicode_literals
 import os
+import random
 import time
 from extra import cairoplot
 
@@ -154,7 +155,7 @@ class WWWGenerator():
     def generate_subsection(self, section_title, comment, bugs, hidden=False, use_h3=False):
         '''Generate a subsection tabular of bugs'''
         
-        id_template = section_title.lower().replace(' ', '_')
+        id_template = section_title.lower().replace(' ', '_') + str(random.randint(0,1000))
         classname = hidden and "hiddencollapsable" or "collapsable"
         hbalise = use_h3 and "h3" or "h2"
         content = """    <%(header)s>%(section)s (%(number)s)</%(header)s>
