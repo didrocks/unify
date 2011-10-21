@@ -27,7 +27,7 @@ launchpad = launchpadmanager.getLaunchpad()
 
 invalid_status_to_open_bug = ("Invalid", "Opinion", "Won't Fix", "Expired", "Incomplete")
 invalid_status_to_take_bugtask_into_account = ("Invalid", "Opinion", "Won't Fix", "Expired") # we can have ayatana-design/unity (upstream): incomplete/compiz (downstream): incomplete
-old_releases = ("(Ubuntu Lucid)", "(Ubuntu Maverick)", "(Ubuntu Natty)")
+old_releases = ("(Ubuntu Lucid)", "(Ubuntu Maverick)", "(Ubuntu Natty)", "(Ubuntu Oneiric)")
 
 design_name = "ayatana-design"
 db = None
@@ -469,6 +469,10 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
             # ignore the master tracking task
             if target_project == master_task:
                 continue
+            # ignore old release status
+            for old_release in old_releases:
+                if old_release in target_project:
+                    continue
             (is_upstream, target_project) = reportUpstreamName(target_project)                
             if not target_project in bug_content:
                 # create upstream and downstream task to None
