@@ -513,7 +513,7 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
                         bug_content[target_project][False] = (new_task.web_link, new_task.bug.title, new_task.status, new_task.importance, None)
                         all_downstream_closed = False # we just opened the bug, obviously not landed yet. invalidate D
                     at_least_one_downstream = True # we have at least a valid downstream bug
-                except lazr.restfulclient.errors.HTTPError, lazr.restfulclient.errors.RestfulError, lazr.restfulclient.errors.ResponseError, lazr.restfulclient.errors.BadRequest:
+                except (lazr.restfulclient.errors.HTTPError, lazr.restfulclient.errors.RestfulError, lazr.restfulclient.errors.ResponseError, lazr.restfulclient.errors.BadRequest), e:
                     continue # this upstream doesn't count
                 # A
                 if status not in ('Fix Committed', 'Fix Released'):
