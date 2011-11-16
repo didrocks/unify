@@ -80,12 +80,18 @@ if __name__ == "__main__":
     
     # get closed bugs
     stat_bugs = db.get_closed_reports_by_release()
+    
+    # Get distro priorities
+    (inconsistent_distro_priorities, officially_signed_off_priority, design_on_hold_priority, ready_to_develop_upstream_priority,
+        ready_to_develop_downstream_priority, ready_to_land_downstream_priority, ready_to_review_priority, invalid_bugs) = get_bug_mastered_track_reports("unity-distro-priority", db)
+        
     db.close_db()
         
     # write status
     www_gen = WWWGenerator()
     www_gen.generate_pages_workpages(untriaged_bugs, officially_signed_off, design_on_hold, ready_to_develop_upstream,
                                      ready_to_develop_downstream, ready_to_land_downstream,
-                                     ready_to_review, invalid_bugs, stat_bugs)
+                                     ready_to_review, invalid_bugs, stat_bugs,
+                                     ready_to_develop_upstream_priority, ready_to_develop_downstream_priority, inconsistent_distro_priorities, ready_to_review_priority)
                                      
     
