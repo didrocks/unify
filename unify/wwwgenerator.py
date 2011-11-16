@@ -46,7 +46,7 @@ class WWWGenerator():
     def generate_pages_workpages(self, untriaged_bugs, officially_signed_off, design_on_hold, ready_to_develop_upstream,
                                  ready_to_develop_downstream, ready_to_land_downstream,
                                  ready_to_review, invalid_bugs, closed_reports_by_release,
-                                 ready_to_develop_upstream_priority, ready_to_develop_downstream_priority, inconsistent_distro_priorities, ready_to_review_priority):
+                                 ready_to_develop_upstream_priority, ready_to_develop_downstream_priority, inconsistent_distro_priorities, ready_to_land_downstream_priority, ready_to_review_priority):
         '''Generate all pages with the data'''
 
         self.generate_design_view(untriaged_bugs, officially_signed_off,  design_on_hold, ready_to_develop_upstream,
@@ -55,7 +55,7 @@ class WWWGenerator():
         self.generate_upstream_view(officially_signed_off, ready_to_develop_upstream,
                                     ready_to_land_downstream, ready_to_review, ready_to_develop_upstream_priority)         
         self.generate_downstream_view(ready_to_develop_upstream, ready_to_develop_downstream,
-                                      ready_to_land_downstream, ready_to_review, ready_to_develop_downstream_priority, inconsistent_distro_priorities, ready_to_review_priority)
+                                      ready_to_land_downstream, ready_to_review, ready_to_develop_downstream_priority, inconsistent_distro_priorities, ready_to_land_downstream_priority, ready_to_review_priority)
         self.generate_stats(closed_reports_by_release)
        
 
@@ -104,7 +104,7 @@ class WWWGenerator():
         self.write_page_on_disk("upstream", main_content)
 
     def generate_downstream_view(self, ready_to_develop_upstream, ready_to_develop_downstream,
-                                 ready_to_land_downstream, ready_to_review, ready_to_develop_downstream_priority, inconsistent_distro_priorities, ready_to_review_priority):
+                                 ready_to_land_downstream, ready_to_review, ready_to_develop_downstream_priority, inconsistent_distro_priorities, ready_to_land_downstream_priority, ready_to_review_priority):
         '''Generate the downstream page'''
         main_content = "  <h1>Downstream View</h1>\n"
         main_content += '''<h2>Downstream projects that can be worked on</h2>
@@ -118,6 +118,9 @@ class WWWGenerator():
 '''
         subsection_title = "Design changes ready to land on %s"
         main_content += self.generate_subsections_by_project(ready_to_land_downstream, subsection_title)
+        main_content += '''    </div>\n'''
+        subsection_title = "Upstream distro priority ready to land on %s"
+        main_content += self.generate_subsections_by_project(ready_to_land_downstream_priority, subsection_title)
         main_content += '''    </div>\n'''
         comment = "Upstream distro priority change ready for review"
         main_content += self.generate_subsection("Upstream distro priority ready for review", comment, ready_to_review_priority)

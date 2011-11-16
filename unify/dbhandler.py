@@ -47,6 +47,7 @@ class DBHandler():
         
     def add_closed_reports(self, bug_link, title, release=None):
         """add a new bug to the dance"""
+        print bug_link
         if not release:
             release = self.current_release
         try:
