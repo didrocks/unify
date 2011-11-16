@@ -118,7 +118,10 @@ class WWWGenerator():
 '''
         subsection_title = "Design changes ready to land on %s"
         main_content += self.generate_subsections_by_project(ready_to_land_downstream, subsection_title)
-        main_content += '''    </div>\n'''
+        main_content += '''    </div>
+    <h2>Upstream distro priority changes ready to land in distro</h2>
+    <div class="collapsable" id="div_downstream_priority_land">
+'''
         subsection_title = "Upstream distro priority ready to land on %s"
         main_content += self.generate_subsections_by_project(ready_to_land_downstream_priority, subsection_title)
         main_content += '''    </div>\n'''
