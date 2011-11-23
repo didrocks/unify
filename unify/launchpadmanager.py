@@ -26,7 +26,7 @@ def getLaunchpad(use_staging=False):
         if use_staging:
             server = 'staging'
         else:
-            server = 'edge'
+            server = 'production'
         launchpad = Launchpad.login_with('unify', server, allow_access_levels=["WRITE_PRIVATE"])
     
     return launchpad    
