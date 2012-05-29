@@ -411,11 +411,11 @@ def getPackagesFormattedChangelog(bugs):
     for package in components:
         content = []
         for entry in components[package]:
-            content.append(textwrap.fill(entry, width= 78, initial_indent="    - ", subsequent_indent="      "))
+            content.append(textwrap.fill(entry, width= 78, initial_indent="    - ", subsequent_indent="      ").encode("ascii","ignore"))
         # ensure (LP: #xxxxx) is on the same line (as it's at the end, this won't change the number of lines)
         index = 0
         while index < len(content):
-            content[index] = content[index].replace(" (LP:\n      ", "\n      (LP: ").encode("utf-8","ignore")
+            content[index] = content[index].replace(u" (LP:\n      ", u"\n      (LP: ").encode("ascii","ignore")
             index += 1
             
         print "-------------------------- %s --------------------------" % package
