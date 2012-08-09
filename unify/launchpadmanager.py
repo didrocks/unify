@@ -15,6 +15,7 @@
 ### END LICENSE
 
 from __future__ import absolute_import, unicode_literals
+import os
 
 from launchpadlib.launchpad import Launchpad
 launchpad = None
@@ -27,8 +28,9 @@ def getLaunchpad(use_staging=False):
             server = 'staging'
         else:
             server = 'production'
-        launchpad = Launchpad.login_with('unify', server, allow_access_levels=["WRITE_PRIVATE"])
-    
-    return launchpad    
-    
+        lp_dir = os.path.join(os.path.dirname(__file__), '..', 'lplib')
+        launchpad = Launchpad.login_with('unify', server, os.path.join(lp_dir, 'cache'), allow_access_levels=["WRITE_PRIVATE"], credentials_file=os.path.join(lp_dir, 'cred'))
+
+    return launchpad
+
 
