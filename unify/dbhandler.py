@@ -34,7 +34,7 @@ class DBHandler():
         db_conn = sqlite3.connect(db_path)
         db_conn.row_factory = sqlite3.Row
         self.db = db_conn.cursor()
-        self.current_release = 'Precise'
+        self.current_release = 'Raring'
         
         try:
             self.db.execute('CREATE TABLE closed_design_bugs (link VARCHAR(80) PRIMARY KEY, title VARCHAR(80), release VARCHAR(10));')

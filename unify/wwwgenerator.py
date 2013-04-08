@@ -147,14 +147,19 @@ class WWWGenerator():
         for release in sorted(reviewed_bugs):
             data.append(reviewed_bugs[release])
             x_labels.append(release)
+        if not data:
+            return
         max_value = max(data)
         num_relevant_digits = len(str(max_value)) - 1
         max_graph_value = round(max_value, -num_relevant_digits) + pow(10, num_relevant_digits)
+        increment = int(max_graph_value / 9)
+        if increment < 1:
+            increment = 1
         i = 0
         y_labels = []
         while (i <= max_graph_value):
             y_labels.append(str(i))
-            i += int(max_graph_value / 9);
+            i += increment
         colors = [(1,0.2,0), (1,0.7,0), (1,1,0), (0,1,0)]
         cairoplot.bar_plot (os.path.join(self.webpath, 'reviewed_design.svg'), data, 500, 300, border = 20, grid = True, rounded_corners = False, colors = colors, h_labels=x_labels, v_labels=y_labels, max_value=max_graph_value)
         main_content += '    <img src="reviewed_design.svg" alt="Number of bugs closed by release" />'

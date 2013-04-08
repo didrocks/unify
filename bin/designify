@@ -70,7 +70,7 @@ if __name__ == "__main__":
         options.logging_level = 3
     logging.basicConfig(level=LEVELS[options.logging_level], format='%(asctime)s %(levelname)s %(message)s')
     
-    design_task = "ayatana-design"
+    design_task = "ubuntu-ux"
     db = get_db_handler()
     
     # perform operations
