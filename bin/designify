@@ -62,7 +62,7 @@ if __name__ == "__main__":
     parser.add_option('-v', '--verbose', dest='logging_level', action='count',
         help='set error_level output to warning, info, and then debug')
                       
-    parser.set_defaults(logging_level=2, foo=None)
+    parser.set_defaults(logging_level=1, foo=None)
     (options, args) = parser.parse_args()
 
     # set the verbosity
