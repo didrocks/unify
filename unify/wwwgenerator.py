@@ -68,7 +68,7 @@ class WWWGenerator():
         comment = "Design changes that landed in Ubuntu and ready for the design team to review"
         main_content += self.generate_subsection("Design changes ready to review", comment, ready_to_review)
         comment = "Design changes are officially signed off, but that didn't get handed over upstream or downstream"
-        main_content += self.generate_subsection("Triaged design bugs", comment, officially_signed_off)
+        main_content += self.generate_subsection("Triaged and in progress design bugs", comment, officially_signed_off)
         comment = "Design changes that are on hold (Opinion, Incomplete)"
         main_content += self.generate_subsection("Design changes on hold", comment, design_on_hold)
         comment = "Bugs that are not triaged and have an ayatana-design task"

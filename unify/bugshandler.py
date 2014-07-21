@@ -453,7 +453,7 @@ def get_bug_mastered_track_reports(master_task, db, subset_bugs=None):
     get_bug_master_track_bug_status(project, "New", untriaged_bugs, db, subset_bugs)
     get_bug_master_track_bug_status(project, "Confirmed", untriaged_bugs, db, subset_bugs)
     get_bug_master_track_bug_status(project, "Triaged", officially_signed_off, db, subset_bugs)
-    get_bug_master_track_bug_status(project, "In Progress", untriaged_bugs, db, subset_bugs)
+    get_bug_master_track_bug_status(project, "In Progress", officially_signed_off, db, subset_bugs)
     get_bug_master_track_bug_status(project, "Incomplete", bugs_on_design_hold, db, subset_bugs)
     get_bug_master_track_bug_status(project, "Opinion", bugs_on_design_hold, db, subset_bugs)    
 
